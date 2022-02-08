@@ -2,6 +2,8 @@ module statix/lang/normalize
 
 imports
 
+  signatures/statix/lang/Core-sig
+
   nabl2/api
 
   statix/lang/normalize/-

@@ -1,7 +1,7 @@
 module statix/lang/init
 
 // to be replaced with `imports signatures/statix/lang/Core-sig` once `sdf3.ext.statix` is enabled.
-signature 
+signature
   sorts Start
 
 rules
@@ -12,23 +12,23 @@ rules
 
 
   fileOk: scope * Start
-  
+
   fileOk(s, mod) :-
-    false.
+    false | error $[File analysis not yet implemented.].
 
 signature
   sorts
     Constraint
-    
+
   constructors
     CTrue    : Constraint
     CConj    : Constraint * Constraint -> Constraint
-    
+
 rules
     constraintOk : Constraint
-    
+
     constraintOk(CTrue()).
-    
+
     constraintOk(CConj(l, r)) :-
         constraintOk(l),
         constraintOk(r).

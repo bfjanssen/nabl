@@ -9,6 +9,7 @@ imports
   statix/lang/statics/-
   statix/lang/normalize
   statix/lang/transform/-
+  statix/lang/analysis
 
   pp
 

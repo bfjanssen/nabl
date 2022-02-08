@@ -16,6 +16,8 @@ imports
   statix/lang/statics/-
 
   statix/runtime/pp
+  statix/api
+
   pp/statix/lang/-
   pp
 
@@ -26,7 +28,8 @@ signature
 
 rules // Analysis
 
-    editor-analyze = stx-editor-analyze(desugar-all, id|"statix/lang/init", "projectOk", "fileOk")
+  editor-analyze = stx-editor-analyze(desugar-all, id|"statix/lang/init", "projectOk", "fileOk")
+
   //editor-analyze = nabl2-analyze(desugar-all)
 
   nabl2-custom-analysis-unit-hook:
