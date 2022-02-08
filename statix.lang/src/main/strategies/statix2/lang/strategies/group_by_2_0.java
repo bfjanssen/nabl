@@ -1,4 +1,4 @@
-package statix.lang.strategies;
+package statix2.lang.strategies;
 
 import java.util.ArrayList;
 import java.util.Collection;

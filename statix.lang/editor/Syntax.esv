@@ -11,8 +11,8 @@ language
 
 views
 
-  outline view  : editor-outline
-    expand to level: 1
+  //outline view  : editor-outline
+  //  expand to level: 1
 
 menus
 

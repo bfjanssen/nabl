@@ -1,4 +1,4 @@
-package statix.lang.strategies;
+package statix2.lang.strategies;
 
 import org.strategoxt.lang.JavaInteropRegisterer;
 import org.strategoxt.lang.Strategy;
