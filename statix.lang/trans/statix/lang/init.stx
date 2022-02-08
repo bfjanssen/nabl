@@ -1,5 +1,21 @@
 module statix/lang/init
 
+// to be replaced with `imports signatures/statix/lang/Core-sig` once `sdf3.ext.statix` is enabled.
+signature 
+  sorts Start
+
+rules
+
+  projectOk: scope
+
+  projectOk(_).
+
+
+  fileOk: scope * Start
+  
+  fileOk(s, mod) :-
+    false.
+
 signature
   sorts
     Constraint
@@ -8,7 +24,7 @@ signature
     CTrue    : Constraint
     CConj    : Constraint * Constraint -> Constraint
     
-  rules
+rules
     constraintOk : Constraint
     
     constraintOk(CTrue()).
