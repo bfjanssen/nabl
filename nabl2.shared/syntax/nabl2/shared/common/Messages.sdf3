@@ -13,6 +13,8 @@ sorts
 
   NaBL2-MessageContent
   NaBL2-MessagePosition
+  NaBL2-Message
+  NaBL2-MessageKind
 
 context-free syntax
 

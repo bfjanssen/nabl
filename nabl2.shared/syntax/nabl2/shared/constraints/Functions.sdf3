@@ -5,10 +5,14 @@ imports
   nabl2/shared/common/CTerms
   nabl2/shared/common/Identifiers
   nabl2/shared/common/Messages
+  nabl2/shared/constraints/Base
 
 template options
 
   keyword -/- [a-zA-Z0-9\'\_]
+
+context-free sorts
+  NaBL2-Function NaBL2-FunctionRef
 
 context-free syntax
 

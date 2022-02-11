@@ -8,6 +8,9 @@ template options
 
   keyword -/- [a-zA-Z0-9\'\_]
 
+context-free sorts
+  NaBL2-CTerm NaBL2-CTerms NaBL2-CList
+
 context-free syntax
 
   NaBL2-CTerm           = NaBL2-CVar {prefer}

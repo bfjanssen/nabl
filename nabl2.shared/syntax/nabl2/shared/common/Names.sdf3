@@ -6,6 +6,7 @@ imports
   nabl2/shared/common/Identifiers
   nabl2/shared/common/Messages
   nabl2/shared/common/ScopeGraph
+  nabl2/shared/common/Sets
 
 template options
 
@@ -14,6 +15,9 @@ template options
 context-free syntax
 
   NaBL2-CSet = NaBL2-Names
+
+sorts
+  NaBL2-Names NaBL2-NamespacePattern
 
 syntax
 

@@ -4,6 +4,13 @@ sorts
 
   NaBL2-Keyword
 
+lexical sorts
+  NaBL2-INT NaBL2-ID NaBL2-LCID NaBL2-UCID
+  NaBL2-STRID NaBL2-STRLCID NaBL2-STRUCID
+  NaBL2-VarId NaBL2-OpId NaBL2-SortId NaBL2-NamespaceId
+  NaBL2-PropertyId NaBL2-RelationId NaBL2-FunctionId
+  NaBL2-ProjectionId NaBL2-StrategyId NaBL2-LabelId NaBL2-BuiltinLabel
+
 lexical syntax
 
   NaBL2-INT            = "-"? [0-9]+

@@ -13,12 +13,18 @@ template options
 
   keyword -/- [a-zA-Z0-9\'\_]
 
+context-free sorts
+  NaBL2-DeclProperty
+
 context-free syntax
 
   NaBL2-Constraint.CDeclProperty = [[NaBL2-Occurrence].[NaBL2-DeclProperty] := [NaBL2-CTerm] [NaBL2-ConstraintPriority] [NaBL2-Message]]
  
-  NaBL2-DeclProperty.Property = NaBL2-DeclPropertyId
-  NaBL2-DeclProperty.Type     = "type"
+  NaBL2-DeclProperty.DeclProperty = NaBL2-DeclPropertyId
+  NaBL2-DeclProperty.DeclType     = "type"
+
+lexical sorts
+  NaBL2-DeclPropertyId
 
 lexical syntax
 

@@ -8,6 +8,9 @@ template options
 
   keyword -/- [a-zA-Z0-9\'\_]
 
+context-free sorts
+  NaBL2-Reflexivity NaBL2-Symmetry NaBL2-Transitivity NaBL2-Relation NaBL2-RelationRef
+
 context-free syntax
 
   NaBL2-Reflexivity.Reflexive       = "reflexive"
@@ -24,6 +27,9 @@ context-free syntax
   NaBL2-RelationRef.DefaultRelation =
   NaBL2-RelationRef                 = NaBL2-Relation
 
+sorts
+  NaBL2-RelationBuildOp NaBL2-RelationCheckOp NaBL2-RelationFunction NaBL2-OpRelation
+
 syntax
 
   NaBL2-RelationRef-CF.ExtRelation = "`" NaBL2-StrategyId-LEX "`"
@@ -34,8 +40,11 @@ syntax
   NaBL2-RelationFunction-CF.Lub = NaBL2-OpRelation-CF "lub"
   NaBL2-RelationFunction-CF.Glb = NaBL2-OpRelation-CF "glb"
 
-  NaBL2-OpRelation-CF.DefaultRelation =
-  NaBL2-OpRelation-CF.Relation        = NaBL2-RelationId-LEX "."
+  NaBL2-OpRelation-CF.DefaultOpRelation =
+  NaBL2-OpRelation-CF.OpRelation        = NaBL2-RelationId-LEX "."
+
+context-free sorts
+  NaBL2-VariancePattern NaBL2-Variances
 
 context-free syntax
 
@@ -43,6 +52,9 @@ context-free syntax
   NaBL2-VariancePattern.TupleVariant = <(<{NaBL2-Variance ","}*>)>
  
   NaBL2-Variances = {NaBL2-Variance ","}*
+
+sorts
+  NaBL2-Variance
 
 syntax
 

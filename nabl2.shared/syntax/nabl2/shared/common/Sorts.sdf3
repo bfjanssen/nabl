@@ -8,6 +8,9 @@ template options
 
   keyword -/- [a-zA-Z0-9\_\']
 
+context-free sorts
+  NaBL2-Sort NaBL2-SortRef
+
 context-free syntax
 
   NaBL2-Sort.SortNoArgs     = NaBL2-SortId
@@ -21,6 +24,9 @@ context-free syntax
   NaBL2-SortRef.TupleSort      = <(<{NaBL2-SortRef " * "}*>)>
   NaBL2-SortRef.ListSort       = <list(<NaBL2-SortRef>)>
   NaBL2-SortRef.MapSort        = <map(<NaBL2-SortRef>, <NaBL2-SortRef>)>
+
+lexical sorts
+  NaBL2-SortVarId
  
 lexical syntax
 
