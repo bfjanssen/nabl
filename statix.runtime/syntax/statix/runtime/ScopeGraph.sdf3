@@ -6,6 +6,13 @@ imports
 
   statix/runtime/ATerm
 
+context-free sorts
+  Stx-ScopeGraph
+  Stx-ScopeEntry
+  Stx-DataEntry
+  Stx-EdgeEntry
+  Stx-EntryValues
+  Stx-Label
 
 context-free syntax
 
@@ -42,6 +49,10 @@ context-free syntax
   Stx-Label.Decl  = "decl"
   Stx-Label.Label = Stx-STRING
 
+context-free sorts
+  Stx-Diff
+  Stx-Changes
+  Stx-MatchEntry
 
 context-free syntax
 

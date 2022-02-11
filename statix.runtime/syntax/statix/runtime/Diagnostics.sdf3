@@ -7,6 +7,13 @@ imports
   statix/runtime/ATerm
   statix/runtime/ScopeGraph
 
+context-free sorts
+  Stx-Diagnostics
+  Stx-Diagnostics-Section
+  Stx-SourceMatchEntry
+  Stx-EdgeMatchEntry
+  Stx-ScopeMatchEntry
+
 context-free syntax
 
   Stx-Diagnostics.Diagnostics = <

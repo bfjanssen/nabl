@@ -11,11 +11,9 @@ imports
 
 /*context-free*/ sorts
 
-  Stx-Occurrence
   Stx-OccurrencePosition
-  Stx-Scope
-  Stx-TermIndex
   Stx-ATerm
+  Stx-Var
 
 
 context-free syntax
