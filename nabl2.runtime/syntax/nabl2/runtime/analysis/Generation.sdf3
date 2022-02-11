@@ -3,12 +3,16 @@ module nabl2/runtime/analysis/Generation
 imports
 
   nabl2/shared/common/CTerms
+  nabl2/runtime/analysis/Debug
+
+context-free sorts
+  NaBL2-CGenArgs NaBL2-CGenParams
 
 context-free syntax
 
   NaBL2-AnalysisResult.Params = <params <NaBL2-CGenArgs>>
 
-  NaBL2-CGenArgs.Params        = <<NaBL2-CGenParams>>
+  NaBL2-CGenArgs.CGenParams        = <<NaBL2-CGenParams>>
   NaBL2-CGenArgs.ParamsAndType = <<NaBL2-CGenParams> : <NaBL2-CTerm>>
 
   NaBL2-CGenParams = <^ (<{NaBL2-CTerm ","}*>)>
