@@ -13,6 +13,9 @@ template options
  * Filtering
  ******************************************************************/
 
+context-free sorts
+  NamespaceFilter NamespaceMin
+
 context-free syntax
 
   QueryFilter.Filter_dep = < filter pathMatch[<LabelRE>]> {deprecated("Use 'filter RE' instead of 'filter pathMatch[RE]'")}
@@ -27,6 +30,9 @@ context-free syntax
 /******************************************************************
  * Scope Graph creation
  ******************************************************************/
+
+context-free sorts
+  NsDecl NamespaceQuery RelData
 
 context-free syntax
 
@@ -61,6 +67,9 @@ context-free syntax
  * Resolve & Query
  ******************************************************************/
 
+context-free sorts
+  OccurrenceTerm OccurrenceTerms Occurrence
+
 context-free syntax
 
   Constraint.CResolveRef        = [[Occurrence] in [Term] |-> [Term][Message]]             {deprecated("Occurrences might be removed in a future version. Use `query` syntax instead.")}
@@ -76,11 +85,14 @@ context-free syntax
 
   Occurrence = OccurrenceLit // this indirection is necessary to solve parse errors
 
+sorts
+  OccurrencePosition OccurrenceLit
+
 syntax
 
-  OccurrencePosition-CF.NoId   =
-  OccurrencePosition-CF.WithId = "@" TermOrTermIndex-CF
-  OccurrencePosition-CF.NoId   = "@-"
+  OccurrencePosition-CF.NoId            =
+  OccurrencePosition-CF.WithId          = "@" TermOrTermIndex-CF
+  OccurrencePosition-CF.NoIdExplicit    = "@-"
 
   OccurrenceLit-CF.StxOccurrence = NamespaceId-LEX "{" LAYOUT?-CF OccurrenceTerms-CF LAYOUT?-CF OccurrencePosition-CF LAYOUT?-CF "}" {deprecated("Usage of occurrences is strongly discouraged.")}
 

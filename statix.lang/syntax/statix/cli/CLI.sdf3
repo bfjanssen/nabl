@@ -11,6 +11,9 @@ template options
 
   keyword -/- [a-zA-Z0-9\_\-\']
 
+context-free sorts
+  CommandLine
+
 context-free start-symbols
 
   CommandLine

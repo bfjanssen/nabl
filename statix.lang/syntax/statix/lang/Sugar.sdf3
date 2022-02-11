@@ -14,15 +14,14 @@ template options
  * User Constraints                                               *
  ******************************************************************/
 
+context-free sorts
+  CDerive Lift
+
 context-free syntax
 
   // lifting of constraints
 
-  Rule             = <constraint <CDerive>>
-  Rule             = CDerive
-
-  Rule.CDecl       = [[CInd]constraint [ConstraintId] : [Type]]
-  Rule.CDecl       = [[CInd][ConstraintId] : [Type]]
+  Rule             = CDecl
 
   CDecl            = CDerive
 

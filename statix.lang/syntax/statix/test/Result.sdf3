@@ -13,6 +13,8 @@ imports
   statix/runtime/ATerm
   statix/runtime/ScopeGraph
 
+context-free sorts
+  TestResult Solution
 
 context-free syntax
 
@@ -36,6 +38,9 @@ context-free syntax
     <Analysis>
   >
 
+context-free sorts
+  Analysis
+
 context-free syntax
 
   // special pretty print rule in statix/runtime/pp to support printing blob analyses too
@@ -45,9 +50,15 @@ context-free syntax
       <Stx-ScopeGraph>
   >
 
+context-free sorts
+  SubstEntry
+
 context-free syntax
 
   SubstEntry = [[Var] |-> [Stx-ATerm]]
+
+context-free sorts
+  EditorMessage MessagePos
   
 context-free syntax
 

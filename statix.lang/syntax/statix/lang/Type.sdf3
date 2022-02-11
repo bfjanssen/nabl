@@ -13,6 +13,7 @@ sorts
 
   IType // internal type
   TType // term type
+  TTypes
 
 context-free syntax
 
@@ -37,6 +38,9 @@ context-free syntax
 sorts
 
   ExtOrigin // custom prettyprint rule in statix/lang/scope-extension.str
+
+context-free sorts
+  ExtConstraints ExtConstraint ExtSets ExtSet ExtId ExtLabel ExtEqs ExtEq ExtOp
 
 context-free syntax
 
@@ -74,6 +78,9 @@ context-free syntax
   ExtOp.Union        = [union([{ExtOp ", "}*])]
   ExtOp.Intersection = [isect([{ExtOp ", "}*])]
   ExtOp              = ExtSet
+
+context-free sorts
+  PatternConstraint
 
 context-free syntax
 

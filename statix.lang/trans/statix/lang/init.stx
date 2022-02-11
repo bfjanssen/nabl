@@ -1,6 +1,9 @@
 module statix/lang/init
 
 // to be replaced with `imports signatures/statix/lang/Core-sig` once `sdf3.ext.statix` is enabled.
+imports
+//  signatures/statix/lang/Core-sig
+
 signature
   sorts Start
 

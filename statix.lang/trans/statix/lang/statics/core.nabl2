@@ -292,7 +292,7 @@ rules
   EdgeRef[[ l@Label(x) ^ (s) ]] :=
     Edge{x} -> s, Edge{x} |-> d | error $[Unresolved edge label [x]] @x, @l.ref := Edge{x}, @x.decl := d.
 
-  EdgeRef[[ l@EOP() ^ (s) ]].
+  EdgeRef[[ l@TGT() ^ (s) ]].
 
 
   LabelPair[[ LabelPair(lbl1, lbl2) ^ (s) ]] :=
@@ -519,31 +519,31 @@ rules
   ArithExp(V)[[ e@Var(_) ^ (s) : INT() ]] :=
     V[[ e ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Add(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ AAdd(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Mul(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ AMul(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Sub(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ ASub(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Min(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ AMin(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Max(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ AMax(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Mod(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ AMod(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 
-  ArithExp(V)[[ Div(e1, e2) ^ (s) : INT() ]] :=
+  ArithExp(V)[[ ADiv(e1, e2) ^ (s) : INT() ]] :=
     ArithExp(V)[[ e1 ^ (s) : INT() ]],
     ArithExp(V)[[ e2 ^ (s) : INT() ]].
 

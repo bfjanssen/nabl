@@ -26,7 +26,8 @@ rules
     desugar-regexes;
     desugar-queries;
     desugar-lambdas;
-    desugar-tuples
+    desugar-tuples;
+    desugar-explicit-ids
 
 rules
 
@@ -112,3 +113,10 @@ rules
 
   desugar-tuple: Tuple0Lift()      -> TupleLift([])
   desugar-tuple: TupleNLift(x, xs) -> TupleLift([x|xs])
+
+rules
+
+  desugar-explicit-ids = topdown(try(desugar-explicit-id))
+  
+  desugar-explicit-id: NoIdExplicit() -> NoId()  
+  
