@@ -8,12 +8,18 @@ dependencies:
   # org.metaborg:org.metaborg.meta.lang.stratego:${metaborgBaselineVersion}
   - org.metaborg:org.metaborg.meta.lang.template:${metaborgVersion}
   - org.metaborg:sdf3.ext.statix:${metaborgVersion}
+  - org.metaborg:statix.lang:${metaborgVersion}
   source:
   - org.metaborg:meta.lib.spoofax:${metaborgVersion}
 
 exports:
 - directory: src-gen/statix
   includes: "**/*.aterm"
+  
+- directory: src-gen/statix
+  includes: 
+  - signatures/nabl2/**/*.stx
+  - signatures/NaBL2Shared-sig.stx
 
   ## Stratego
 - language: Stratego-Sugar
