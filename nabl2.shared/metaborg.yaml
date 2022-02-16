@@ -15,9 +15,10 @@ dependencies:
 exports:
 - directory: src-gen/statix
   includes: "**/*.aterm"
-  
-- directory: src-gen/statix
-  includes: 
+
+- language: StatixLang
+  directory: src-gen/statix
+  includes:
   - signatures/nabl2/**/*.stx
   - signatures/NaBL2Shared-sig.stx
 

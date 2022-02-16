@@ -13,11 +13,13 @@ dependencies:
 exports:
 - directory: src-gen/statix
   includes: "**/*.aterm"
-  
-- directory: src-gen/statix
-  includes: 
+
+- language: StatixLang
+  directory: src-gen/statix
+  includes:
   - signatures/statix/**/*.stx
-  - signatures/StatixRuntime-sig.stx  
+  - signatures/StatixRuntime-sig.stx
+
   ## Stratego-Sugar
 - language: Stratego-Sugar
   directory: trans
