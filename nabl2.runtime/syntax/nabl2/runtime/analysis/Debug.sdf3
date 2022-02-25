@@ -33,7 +33,7 @@ context-free syntax
     }
   >
 
-  NaBL2-ScopeEntry.Scope = <
+  NaBL2-ScopeEntry.DebugScope = <
     scope <NaBL2-Scope> {
       <{NaBL2-ScopePartEntry "\n"}*>
     }

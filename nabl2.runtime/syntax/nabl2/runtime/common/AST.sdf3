@@ -6,9 +6,6 @@ imports
   nabl2/runtime/common/Native
   nabl2/runtime/analysis/Generation
 
-context-free sorts
-  NaBL2-TermIndex
-
 context-free syntax
 
   NaBL2-TermIndex.TermIndex = <@<NaBL2-String>:<NaBL2-Int>>

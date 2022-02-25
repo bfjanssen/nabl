@@ -3,9 +3,7 @@ module nabl2/runtime/common/CTerms
 imports
 
   nabl2/runtime/common/Native
-
-context-free sorts
-  NaBL2-CVar NaBL2-CTerm
+  nabl2/shared/common/CTerms
 
 context-free syntax
 

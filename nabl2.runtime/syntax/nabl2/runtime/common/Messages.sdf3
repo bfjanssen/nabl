@@ -14,6 +14,6 @@ context-free syntax
   NaBL2-MessageContent.Term      = NaBL2-CTerm
   NaBL2-MessageContent.Default   = "(default)"
 
-  NaBL2-MessagePosition.NoIndex  = < @ ->
-  NaBL2-MessagePosition.NAME     = < @ NAMES>
+  NaBL2-MessagePosition.NoMessageIndex  = < @ ->
+  NaBL2-MessagePosition.MNAME     = < @ NAMES>
   NaBL2-MessagePosition          = < <NaBL2-TermIndex>>
