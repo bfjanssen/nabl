@@ -46,8 +46,8 @@ context-free syntax
   Stx-EntryValues = {Stx-ATerm "\n"}*
 
   // duplicate of RelRef & Label in statix.lang
-  Stx-Label.Decl  = "decl"
-  Stx-Label.Label = Stx-STRING
+  Stx-Label.StxDecl  = "decl"
+  Stx-Label.StxLabel = Stx-STRING
 
 context-free sorts
   Stx-Diff
