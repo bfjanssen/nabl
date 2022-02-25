@@ -1,37 +1,147 @@
 module statix/lang/init
 
-// to be replaced with `imports signatures/statix/lang/Core-sig` once `sdf3.ext.statix` is enabled.
 imports
-//  signatures/statix/lang/Core-sig
-
+  signatures/Statix2Lang-sig
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Sugar-sig
+  signatures/statix/lang/NoParse-sig
+  
 signature
-  sorts Start
+    sorts
+        TERMTYPE LABELTYPE
+        
+    constructors
+       INT      :   TERMTYPE
+       STRING   :   TERMTYPE
+       LIST     :   TERMTYPE -> TERMTYPE
+       SCOPE    :   TERMTYPE
+       TUPLE    :   list(TERMTYPE) -> TERMTYPE
+       AST_ID   :   TERMTYPE
+       PATH     :   TERMTYPE
+       SORT     :   string -> TERMTYPE
+       LABEL    :   TERMTYPE
+       UNIT     :   TERMTYPE
+       UNKNOWN  :   TERMTYPE
+       
+       SIMPLELABEL  : LABELTYPE
+       RELATION     : list(TERMTYPE) -> LABELTYPE
+       
+    relations
+        mod         :   string -> scope
+        constrain   :   string -> (list(TERMTYPE) * TERMTYPE)
+        var         :   string -> TERMTYPE 
+        sort        :   string -> TERMTYPE
+        construct   :   string -> (list(TERMTYPE) * string)
+        label       :   string -> LABELTYPE
+        
+    name-resolution
+        labels P
 
 rules
+  resolveConstraint: scope * string -> (list(TERMTYPE) * TERMTYPE)
+  resolveConstraint(s, id) = (ATS, RT) :-
+    query constrain
+        filter P* and {x' :- x' == id}
+        in s |-> [(_,(id,(ATS, RT)))].
 
+rules
   projectOk: scope
 
   projectOk(_).
 
 
   fileOk: scope * Start
-
-  fileOk(s, mod) :-
-    false | error $[File analysis not yet implemented.].
-
-signature
-  sorts
-    Constraint
-
-  constructors
-    CTrue    : Constraint
-    CConj    : Constraint * Constraint -> Constraint
+  
+  fileOk(s, Module2Start(mod)) :-
+    moduleOk(s, mod).
+    
+  fileOk(s, Test2Start(test)) :-
+    false | error $[Test analysis not yet implemented].
+    
+  moduleOk: scope * Module
+  
+  moduleOk(s, Module(_, sections)) :- {s_mod}
+    new s_mod, s_mod -P-> s,
+    sectionsOk(s_mod, sections).
 
 rules
-    constraintOk : Constraint
+  sectionOk: scope * Section
+  sectionsOk maps sectionOk(*, list(*))
+  
+  sectionOk(s, Rules(rules)) :-
+    rulesOk(s, rules).
 
-    constraintOk(CTrue()).
+rules
+  ruleOk: scope * Rule
+  rulesOk maps ruleOk(*, list(*))
+  
+  ruleOk(s, Rule(_, head, cnstrnt)) :-
+    ruleHeadOk(s, head),
+    constraintOk(s, cnstrnt).
+  
+  ruleHeadOk: scope * RuleHead
+  
+  ruleHeadOk(s, C(id, args)) :-
+    resolveConstraint(s, id) == (termsOk(s, args), UNIT()).
+    
+  ruleHeadOk(s, F(id, args, result)) :-
+    resolveConstraint(s, id) == (termsOk(s, args), termOk(s, result)).
+    
+  ruleOk(s, CDecl2Rule(cd)) :- {T}
+    cDeclOk(s, cd).
+    
+rules
+  cDeclOk: scope * CDecl
+  
+  cDeclOk(s, CDecl(_, id, SimpleType(tys))) :-
+    !constrain[id, (sortRefToTypes(s, tys), UNIT())] in s.
+  
+  cDeclOk(s, CDecl(_, id, FunType(tys, rtty))) :-
+    !constrain[id, (sortRefToTypes(s, tys), sortRefToType(s, rtty))] in s.
+  
+  sortRefToType: scope * SortRef -> TERMTYPE
+  sortRefToTypes maps sortRefToType(*, list(*)) = list(*)
+  
+  sortRefToType(_, IntSort()) = INT().
+  sortRefToType(_, StringSort()) = STRING().
+  sortRefToType(_, PathSort()) = PATH().
+  sortRefToType(_, LabelSort()) = LABEL().
+  sortRefToType(_, ScopeSort()) = SCOPE().
+  sortRefToType(_, AstIdSort()) = AST_ID().
+  
+  sortRefToType(s, ListSort(ty)) = LIST(T) :-
+    T == sortRefToType(s, ty).
+    
+  sortRefToType(s, TupleSort(tys)) = TUPLE(TS) :-
+    TS == sortRefToTypes(s, tys).  
 
-    constraintOk(CConj(l, r)) :-
-        constraintOk(l),
-        constraintOk(r).
+rules
+    constraintOk : scope * Constraint
+
+    constraintOk(_, CTrue()).
+    
+    constraintOk(s, CFalse(_)).
+
+    constraintOk(s, CConj(l, r)) :-
+        constraintOk(s, l),
+        constraintOk(s, r).
+        
+rules
+    termOk : scope * Term -> TERMTYPE
+    termsOk maps termOk(*, list(*)) = list(*)
+    
+    termOk(_, Int2Term(_)) = INT().
+    termOk(_, Str2Term(_)) = STRING().
+    
+    termOk(s, List(xs)) = LIST(T) :-
+        [T|_] == termsOk(s, xs).
+    
+    termOk(s, ListTail(hs, tail)) = LIST(T) :-
+        [T|_] == termsOk(s, hs),
+        LIST(T) == termOk(s, tail).
+    
+    termOk(s, Tuple(t)) = TUPLE(TS) :-
+        TS == termsOk(s, t).
+    
+    termOk(s, As(var, term)) = T :-
+        T == termOk(s, term).    

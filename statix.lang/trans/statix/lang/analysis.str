@@ -3,6 +3,7 @@ module statix/lang/analysis
 imports
 
   libspoofax/analysis/constraint
+  libspoofax/sdf/pp
 
   nabl2shared
   nabl2/shared/ast // for index-ast
@@ -16,10 +17,14 @@ imports
   statix/lang/statics/-
 
   statix/runtime/pp
+  statixruntime
   statix/api
 
   pp/statix/lang/-
   pp
+  
+  injections/-
+  libspoofax/term/origin
 
 signature
   sorts CustomAnalysis constructors
@@ -28,7 +33,9 @@ signature
 
 rules // Analysis
 
-  editor-analyze = stx-editor-analyze(desugar-all, id|"statix/lang/init", "projectOk", "fileOk")
+  editor-analyze = stx-editor-analyze(desugar-all;pre-analyze, post-analyze|"statix/lang/init", "projectOk", "fileOk")
+  pre-analyze  = origin-track-forced(explicate-injections-Statix-Start)
+  post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
   //editor-analyze = nabl2-analyze(desugar-all)
 

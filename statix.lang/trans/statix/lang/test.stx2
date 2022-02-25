@@ -1,3 +1,4 @@
 module test
 
 rules
+    rule: int * int
