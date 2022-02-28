@@ -17,8 +17,13 @@ exports:
 - language: StatixLang
   directory: src-gen/statix
   includes:
-  - signatures/statix/**/*.stx
+  - signatures/statix/runtime/**/*.stx
   - signatures/StatixRuntime-sig.stx
+
+- language: StatixLang
+  directory: trans
+  includes:
+  - signatures/statix/API-sig.stx
 
   ## Stratego-Sugar
 - language: Stratego-Sugar
