@@ -24,6 +24,7 @@ imports
   pp
   
   injections/-
+  injections/statix/lang/NoParse-injections
   libspoofax/term/origin
 
 signature

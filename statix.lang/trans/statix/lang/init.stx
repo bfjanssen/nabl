@@ -41,9 +41,20 @@ rules
   resolveConstraint: scope * string -> (list(TERMTYPE) * TERMTYPE)
   resolveConstraint(s, id) = (ATS, RT) :-
     query constrain
-        filter P* and {x' :- x' == id}
+        filter P* and {x :- x == id}
         in s |-> [(_,(id,(ATS, RT)))].
-
+        
+  declareVariable: scope * string * TERMTYPE
+  declareVariable(s, id, T) :-
+     !var[id, T] in s.     
+  
+  resolveVariable: scope * string -> TERMTYPE
+  resolveVariable(s, id) = T :-
+    query var
+        filter P* and {x :- x == id}
+        min $ < P and { _, _ :- true }
+        in s |-> [(_,(id, T))].
+     
 rules
   projectOk: scope
 
@@ -68,30 +79,70 @@ rules
   sectionOk: scope * Section
   sectionsOk maps sectionOk(*, list(*))
   
+  sectionOk(s, Signature(sigs)) :-
+    signaturesOk(s, sigs).
+  
   sectionOk(s, Rules(rules)) :-
     rulesOk(s, rules).
+
+rules
+  signatureOk: scope * Signature
+  signaturesOk maps signatureOk(*, list(*))
+  
+  signatureOk(s, Constraints(decls)) :-
+    cDeclsOk(s, decls).
 
 rules
   ruleOk: scope * Rule
   rulesOk maps ruleOk(*, list(*))
   
-  ruleOk(s, Rule(_, head, cnstrnt)) :-
-    ruleHeadOk(s, head),
-    constraintOk(s, cnstrnt).
+  ruleOk(s, Rule(_, head, cnstrnt)) :- {s_rule}
+    new s_rule, s_rule -P-> s,
+    ruleHeadOk(s_rule, head),
+    constraintOk(s_rule, cnstrnt).
   
   ruleHeadOk: scope * RuleHead
   
-  ruleHeadOk(s, C(id, args)) :-
-    resolveConstraint(s, id) == (termsOk(s, args), UNIT()).
+  ruleHeadOk(s, C(id, args)) :- {ATS}
+    resolveConstraint(s, id) == (ATS, UNIT()),
+    paramsOk(s, ATS, args).
     
-  ruleHeadOk(s, F(id, args, result)) :-
-    resolveConstraint(s, id) == (termsOk(s, args), termOk(s, result)).
+  ruleHeadOk(s, F(id, args, result)) :- {ATS RT}
+    resolveConstraint(s, id) == (ATS, RT),
+    paramsOk(s, ATS, args),
+    RT == termOk(s, result).
     
   ruleOk(s, CDecl2Rule(cd)) :- {T}
     cDeclOk(s, cd).
+  
+  //Checking parameters an declaring variables
+  paramOk: scope * TERMTYPE * Term
+  paramsOk maps paramOk(*, list(*), list(*))
+  listparamOk maps paramOk(*, *, list(*))
+  
+  paramOk(_, _, Var2Term(Wld())).
+  paramOk(s, T, Var2Term(Var(var))) :-
+    declareVariable(s, var, T).
+  
+  paramOk(s, T, Tuple(ts)) :- {TS}
+    T == TUPLE(TS),
+    paramsOk(s, TS, ts).
+    
+  paramOk(s, T, List(xs)) :- {LT}
+    T == LIST(LT),
+    listparamOk(s, LT, xs).
+    
+  paramOk(s, T, ListTail(xs, tail)) :- {LT}
+    T == LIST(LT),
+    listparamOk(s, LT, xs),
+    paramOk(s, T, tail).
+  
+  paramOk(_, INT(), Int2Term(_)).
+  paramOk(_, STRING(), Str2Term(_)).
     
 rules
   cDeclOk: scope * CDecl
+  cDeclsOk maps cDeclOk(*, list(*))
   
   cDeclOk(s, CDecl(_, id, SimpleType(tys))) :-
     !constrain[id, (sortRefToTypes(s, tys), UNIT())] in s.
@@ -120,11 +171,14 @@ rules
 
     constraintOk(_, CTrue()).
     
-    constraintOk(s, CFalse(_)).
+    constraintOk(s, CFalse(m)).
 
     constraintOk(s, CConj(l, r)) :-
         constraintOk(s, l),
         constraintOk(s, r).
+    
+    constraintOk(s, CEqual(l, r, m)) :-
+        termOk(s, l) == termOk(s, r).
         
 rules
     termOk : scope * Term -> TERMTYPE
@@ -133,15 +187,23 @@ rules
     termOk(_, Int2Term(_)) = INT().
     termOk(_, Str2Term(_)) = STRING().
     
+    termOk(_, Var2Term(Wld())) = UNKNOWN().
+    termOk(s, Var2Term(Var(var))) = resolveVariable(s, var).
+    
+    termOk(_, List([])) = LIST(UNKNOWN()).
     termOk(s, List(xs)) = LIST(T) :-
         [T|_] == termsOk(s, xs).
     
+    termOk(s, ListTail([], tail)) = LIST(T) :-
+        LIST(T) == termOk(s, tail).
     termOk(s, ListTail(hs, tail)) = LIST(T) :-
         [T|_] == termsOk(s, hs),
         LIST(T) == termOk(s, tail).
     
     termOk(s, Tuple(t)) = TUPLE(TS) :-
         TS == termsOk(s, t).
-    
-    termOk(s, As(var, term)) = T :-
-        T == termOk(s, term).    
+        
+    termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
+        (ATS, RT) == resolveConstraint(s, cid),
+        RT != UNIT() | error "Inline notation can only be used for functional constraints",
+        ATS == termsOk(s, ts).
