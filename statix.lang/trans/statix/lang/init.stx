@@ -54,6 +54,18 @@ rules
         filter P* and {x :- x == id}
         min $ < P and { _, _ :- true }
         in s |-> [(_,(id, T))].
+  
+  resolveSort: scope * string -> TERMTYPE
+  resolveSort(s, id) = T :-
+    query sort
+        filter P* and {x :- x == id}
+        in s |-> [(_,(id, T))].
+  
+  resolveConstructor: scope * string -> (list(TERMTYPE) * string)
+  resolveConstructor(s, id) = (TS, sid) :-
+    query construct
+        filter P* and {x :- x == id}
+        in s |-> [(_,(id,(TS, sid)))].
      
 rules
   projectOk: scope
@@ -91,7 +103,32 @@ rules
   
   signatureOk(s, Constraints(decls)) :-
     cDeclsOk(s, decls).
+    
+  signatureOk(s, Sorts(sdecls)) :-
+    sortDeclsOk(s, sdecls).
+    
+  signatureOk(s, Constructors(opdecls)) :-
+    opDeclsOk(s, opdecls).  
+      
+rules
+  sortDeclOk: scope * SortDecl
+  sortDeclsOk maps sortDeclOk(*, list(*))
+  
+  sortDeclOk(s, SortDecl(id)) :-
+    !sort[id, SORT(id)] in s.
 
+  sortDeclOk(s, SortAlias(id, sref)) :-
+    !sort[id, sortRefToType(s, sref)] in s.
+    
+  opDeclOk: scope * OpDecl
+  opDeclsOk maps opDeclOk(*, list(*))
+  
+  opDeclOk(s, OpDecl(id, ConstOp(SimpleSort(sid)))) :-
+    !construct[id, ([], sid)] in s.
+    
+  opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :-
+    !construct[id, (sortRefToTypes(s, refs), sid)] in s.
+    
 rules
   ruleOk: scope * Rule
   rulesOk maps ruleOk(*, list(*))
@@ -137,6 +174,12 @@ rules
     listparamOk(s, LT, xs),
     paramOk(s, T, tail).
   
+  paramOk(s, T, Op(id, Terms2CommaTerms(ts))) :- {TS sid}
+    (TS, sid) == resolveConstructor(s, id),
+    T == resolveSort(s, sid),
+    paramsOk(s, TS, ts).
+    
+  
   paramOk(_, INT(), Int2Term(_)).
   paramOk(_, STRING(), Str2Term(_)).
     
@@ -165,7 +208,9 @@ rules
     
   sortRefToType(s, TupleSort(tys)) = TUPLE(TS) :-
     TS == sortRefToTypes(s, tys).  
-
+    
+  sortRefToType(s, Sort2SortRef(SimpleSort(sid))) = resolveSort(s, sid).
+      
 rules
     constraintOk : scope * Constraint
 
@@ -202,6 +247,11 @@ rules
     
     termOk(s, Tuple(t)) = TUPLE(TS) :-
         TS == termsOk(s, t).
+    
+    termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid}
+        (CTS, sid) == resolveConstructor(s, id),
+        T == resolveSort(s, sid),
+        CTS == termsOk(s, ts).
         
     termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
         (ATS, RT) == resolveConstraint(s, cid),
