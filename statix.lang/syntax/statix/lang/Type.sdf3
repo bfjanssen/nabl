@@ -2,18 +2,21 @@ module statix/lang/Type
 
 imports
 
-  nabl2/API
+//  nabl2/API
 
   statix/lang/Common
   statix/lang/Core
 
-  statix/API
+//  statix/API
 
 sorts
 
   IType // internal type
   TType // term type
   TTypes
+  
+  // STUB FIXES
+  NaBL2Occurrence Stx-INT
 
 context-free syntax
 

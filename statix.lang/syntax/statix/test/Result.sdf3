@@ -2,7 +2,7 @@ module statix/test/Result
 
 imports
 
-  statix/API
+//  statix/API
 
   statix/lang/Layout
   statix/lang/Common
@@ -10,8 +10,8 @@ imports
   statix/lang/Sugar
   statix/lang/Deprecated
 
-  statix/runtime/ATerm
-  statix/runtime/ScopeGraph
+//  statix/runtime/ATerm
+//  statix/runtime/ScopeGraph
 
 context-free sorts
   TestResult Solution
@@ -39,7 +39,7 @@ context-free syntax
   >
 
 context-free sorts
-  Analysis
+  Analysis Stx-ScopeGraph
 
 context-free syntax
 
@@ -51,14 +51,14 @@ context-free syntax
   >
 
 context-free sorts
-  SubstEntry
+  SubstEntry Stx-ATerm
 
 context-free syntax
 
   SubstEntry = [[Var] |-> [Stx-ATerm]]
 
 context-free sorts
-  EditorMessage MessagePos
+  EditorMessage MessagePos Stx-STRING
   
 context-free syntax
 
