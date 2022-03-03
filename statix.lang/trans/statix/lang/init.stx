@@ -149,7 +149,7 @@ rules
     paramsOk(s, ATS, args),
     RT == termOk(s, result).
     
-  ruleOk(s, CDecl2Rule(cd)) :- {T}
+  ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
   
   //Checking parameters an declaring variables
@@ -224,6 +224,10 @@ rules
     
     constraintOk(s, CEqual(l, r, m)) :-
         termOk(s, l) == termOk(s, r).
+    
+    constraintOk(s, CArith(e1, _, e2, m)) :-
+        arithExpOk(s, e1),
+        arithExpOk(s, e2).
         
 rules
     termOk : scope * Term -> TERMTYPE
@@ -257,3 +261,43 @@ rules
         (ATS, RT) == resolveConstraint(s, cid),
         RT != UNIT() | error "Inline notation can only be used for functional constraints",
         ATS == termsOk(s, ts).
+     
+    termOk(s, ArithOp(aExp)) = INT() :-
+        arithExpOk(s, aExp). 
+        
+rules
+  arithExpOk : scope * ArithExp
+  
+  arithExpOk(_, Int2ArithExp(_)).
+  
+  arithExpOk(_, Var2ArithExp(Wld())).
+  arithExpOk(s, Var2ArithExp(Var(var))) :- 
+    resolveVariable(s, var) == INT().
+    
+  arithExpOk(s, AAdd(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+    
+  arithExpOk(s, AMul(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+    
+  arithExpOk(s, ASub(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+    
+  arithExpOk(s, AMin(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+    
+  arithExpOk(s, AMax(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).    
+    
+  arithExpOk(s, AMod(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+    
+  arithExpOk(s, ADiv(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2). 
