@@ -31,42 +31,95 @@ signature
         constrain   :   string -> (list(TERMTYPE) * TERMTYPE)
         var         :   string -> TERMTYPE 
         sort        :   string -> TERMTYPE
-        construct   :   string -> (list(TERMTYPE) * string)
+        construct   :   string * int -> (list(TERMTYPE) * string)
         label       :   string -> LABELTYPE
         
     name-resolution
         labels P
 
 rules
-  resolveConstraint: scope * string -> (list(TERMTYPE) * TERMTYPE)
-  resolveConstraint(s, id) = (ATS, RT) :-
+  // CONSTRAINTS
+  declareConstraint: scope * string * (list(TERMTYPE) * TERMTYPE)
+  resolveConstraint: scope * string -> list((path * (string * (list(TERMTYPE) * TERMTYPE))))
+  typeOfConstraint: scope * string -> (list(TERMTYPE) * TERMTYPE)
+  
+  declareConstraint(s, id, T) :-
+    !constrain[id, T] in s,
+    resolveConstraint(s, id) == [(_, (_, _))] | error $[Duplicate constraint "[id]"].
+  
+  resolveConstraint(s, id) = ps :-
     query constrain
         filter P* and {x :- x == id}
-        in s |-> [(_,(id,(ATS, RT)))].
-        
-  declareVariable: scope * string * TERMTYPE
-  declareVariable(s, id, T) :-
-     !var[id, T] in s.     
+        in s |-> ps.
   
-  resolveVariable: scope * string -> TERMTYPE
-  resolveVariable(s, id) = T :-
+  typeOfConstraint(s, id) = T :- {id'}
+    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint "[id]" not defined].
+  
+  // VARIABLES      
+  declareVariable: scope * string * TERMTYPE
+  resolveVariable: scope * string -> list((path * (string * TERMTYPE)))
+  typeOfVariable: scope * string -> TERMTYPE
+  
+  declareVariable(s, id, T) :-
+     !var[id, T] in s,
+     resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].     
+  
+  resolveVariable(s, id) = ps :-
     query var
         filter P* and {x :- x == id}
         min $ < P and { _, _ :- true }
-        in s |-> [(_,(id, T))].
+        in s |-> ps.
   
-  resolveSort: scope * string -> TERMTYPE
-  resolveSort(s, id) = T :-
+  typeOfVariable(s, id) = T :- {id'}
+    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable "[id]" not defined].
+  
+  // SORTS
+  declareSort: scope * string * TERMTYPE
+  resolveSort: scope * string -> list((path * (string * TERMTYPE)))
+  typeOfSort: scope * string -> TERMTYPE
+  
+  declareSort(s, id, T) :-
+    !sort[id, T] in s,
+    resolveSort(s, id) == [(_, (_, _))] | error $[Duplicate sort "[id]"].
+  
+  resolveSort(s, id) = ps :-
     query sort
         filter P* and {x :- x == id}
-        in s |-> [(_,(id, T))].
+        in s |-> ps.
   
-  resolveConstructor: scope * string -> (list(TERMTYPE) * string)
-  resolveConstructor(s, id) = (TS, sid) :-
+  typeOfSort(s, id) = T :- {id'}
+    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort "[id]" not defined].
+  
+  // CONSTRUCTORS
+  declareConstructor: scope * string * int * (list(TERMTYPE) * string)
+  resolveConstructor: scope * string * int -> list((path * (string * int * (list(TERMTYPE) * string))))
+  typeOfConstructor: scope * string * int -> (list(TERMTYPE) * string)
+  
+  declareConstructor(s, id, arity, T) :-
+    !construct[id, arity, T] in s,
+    resolveConstructor(s, id, arity) == [(_, (_, _, _))] | error $[Duplicate constructor "[id]/[arity]"].
+  
+  resolveConstructor(s, id, arity) = ps :-
     query construct
-        filter P* and {x :- x == id}
-        in s |-> [(_,(id,(TS, sid)))].
+        filter P* and {(x, y) :- x == id, y == arity}
+        in s |-> ps.
+        
+  typeOfConstructor(s, id, arity) = T :- {id' arity'}
+    resolveConstructor(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor "[id]/[arity]" not defined].
 
+rules
+    sortRefLength : list(SortRef) -> int
+    
+    sortRefLength([]) = 0.
+    sortRefLength([_|tail]) = #(1 + sum) :-
+        sum == sortRefLength(tail).
+        
+    termLength : list(Term) -> int
+    
+    termLength([]) = 0.
+    termLength([_|tail]) = #(1 + sum) :-
+        sum == termLength(tail).
+    
 rules
     unifyTypes: TERMTYPE * TERMTYPE
     unifyTypeList maps unifyTypes(list(*), list(*))
@@ -138,19 +191,20 @@ rules
   sortDeclsOk maps sortDeclOk(*, list(*))
   
   sortDeclOk(s, SortDecl(id)) :-
-    !sort[id, SORT(id)] in s.
+    declareSort(s, id, SORT(id)).
 
   sortDeclOk(s, SortAlias(id, sref)) :-
-    !sort[id, sortRefToType(s, sref)] in s.
+    declareSort(s, id, sortRefToType(s, sref)).
     
   opDeclOk: scope * OpDecl
   opDeclsOk maps opDeclOk(*, list(*))
   
   opDeclOk(s, OpDecl(id, ConstOp(SimpleSort(sid)))) :-
-    !construct[id, ([], sid)] in s.
+    declareConstructor(s, id, 0, ([], sid)).
     
-  opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :-
-    !construct[id, (sortRefToTypes(s, refs), sid)] in s.
+  opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :- {len}
+    len == sortRefLength(refs),
+    declareConstructor(s, id, len, (sortRefToTypes(s, refs), sid)).
     
 rules
   ruleOk: scope * Rule
@@ -164,13 +218,13 @@ rules
   ruleHeadOk: scope * RuleHead
   
   ruleHeadOk(s, C(id, args)) :- {ATS}
-    resolveConstraint(s, id) == (ATS, UNIT()),
+    typeOfConstraint(s, id) == (ATS, UNIT()),
     paramsOk(s, ATS, args).
     
   ruleHeadOk(s, F(id, args, result)) :- {ATS RT}
-    resolveConstraint(s, id) == (ATS, RT),
+    typeOfConstraint(s, id) == (ATS, RT),
     paramsOk(s, ATS, args),
-    RT == termOk(s, result).
+    paramOk(s, RT, result).
     
   ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
@@ -197,11 +251,11 @@ rules
     listparamOk(s, LT, xs),
     paramOk(s, T, tail).
   
-  paramOk(s, T, Op(id, Terms2CommaTerms(ts))) :- {TS sid}
-    (TS, sid) == resolveConstructor(s, id),
-    T == resolveSort(s, sid),
-    paramsOk(s, TS, ts).
-    
+  paramOk(s, T, Op(id, Terms2CommaTerms(ts))) :- {TS sid len}
+    len == termLength(ts),
+    (TS, sid) == typeOfConstructor(s, id, len),
+    T == typeOfSort(s, sid),
+    paramsOk(s, TS, ts).  
   
   paramOk(_, INT(), Int2Term(_)).
   paramOk(_, STRING(), Str2Term(_)).
@@ -211,10 +265,10 @@ rules
   cDeclsOk maps cDeclOk(*, list(*))
   
   cDeclOk(s, CDecl(_, id, SimpleType(tys))) :-
-    !constrain[id, (sortRefToTypes(s, tys), UNIT())] in s.
+    declareConstraint(s, id, (sortRefToTypes(s, tys), UNIT())).
   
   cDeclOk(s, CDecl(_, id, FunType(tys, rtty))) :-
-    !constrain[id, (sortRefToTypes(s, tys), sortRefToType(s, rtty))] in s.
+    declareConstraint(s, id, (sortRefToTypes(s, tys), sortRefToType(s, rtty))).
   
   sortRefToType: scope * SortRef -> TERMTYPE
   sortRefToTypes maps sortRefToType(*, list(*)) = list(*)
@@ -232,7 +286,7 @@ rules
   sortRefToType(s, TupleSort(tys)) = TUPLE(TS) :-
     TS == sortRefToTypes(s, tys).  
     
-  sortRefToType(s, Sort2SortRef(SimpleSort(sid))) = resolveSort(s, sid).
+  sortRefToType(s, Sort2SortRef(SimpleSort(sid))) = typeOfSort(s, sid).
       
 rules
     constraintOk : scope * Constraint
@@ -264,7 +318,7 @@ rules
     termOk(_, Str2Term(_)) = STRING().
     
     termOk(_, Var2Term(Wld())) = UNKNOWN().
-    termOk(s, Var2Term(Var(var))) = resolveVariable(s, var).
+    termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
     
     termOk(_, List([])) = LIST(UNKNOWN()).
     termOk(s, List(xs)) = LIST(T) :-
@@ -279,13 +333,14 @@ rules
     termOk(s, Tuple(t)) = TUPLE(TS) :-
         TS == termsOk(s, t).
     
-    termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid}
-        (CTS, sid) == resolveConstructor(s, id),
-        T == resolveSort(s, sid),
+    termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
+        len == termLength(ts),
+        (CTS, sid) == typeOfConstructor(s, id, len),
+        T == typeOfSort(s, sid),
         CTS == termsOk(s, ts).
         
     termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
-        (ATS, RT) == resolveConstraint(s, cid),
+        (ATS, RT) == typeOfConstraint(s, cid),
         RT != UNIT() | error "Inline notation can only be used for functional constraints",
         ATS == termsOk(s, ts).
      
@@ -299,7 +354,7 @@ rules
   
   arithExpOk(_, Var2ArithExp(Wld())).
   arithExpOk(s, Var2ArithExp(Var(var))) :- 
-    resolveVariable(s, var) == INT().
+    typeOfVariable(s, var) == INT().
     
   arithExpOk(s, AAdd(e1, e2)) :-
     arithExpOk(s, e1),
