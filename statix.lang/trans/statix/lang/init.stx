@@ -81,9 +81,7 @@ rules
     unifyTypes(_, UNKNOWN()).
     
     unifyTypes(x, x).
-    
-    unifyTypes(x, y) :-
-        false | error $["Cannot unify types [x] and [y]"].
+    unifyTypes(x, y) :- false.
      
 rules
   projectOk: scope
@@ -248,8 +246,10 @@ rules
         constraintOk(s, l),
         constraintOk(s, r).
     
-    constraintOk(s, CEqual(l, r, m)) :- 
-        unifyTypes(termOk(s, l), termOk(s, r)).
+    constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
+        T1 == termOk(s, l),
+        T2 == termOk(s, r), 
+        unifyTypes(T1, T2) | error $[Cannot unify types [T1] and [T2]].
     
     constraintOk(s, CArith(e1, _, e2, m)) :-
         arithExpOk(s, e1),
