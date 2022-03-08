@@ -241,7 +241,8 @@ rules
 
     constraintOk(_, CTrue()).
     
-    constraintOk(s, CFalse(m)).
+    constraintOk(s, CFalse(m)) :-
+        messageOk(s, m, RegularLocation()).
 
     constraintOk(s, CConj(l, r)) :-
         constraintOk(s, l),
@@ -252,7 +253,8 @@ rules
     
     constraintOk(s, CArith(e1, _, e2, m)) :-
         arithExpOk(s, e1),
-        arithExpOk(s, e2).
+        arithExpOk(s, e2),
+        messageOk(s, m, RegularLocation()).
         
 rules
     termOk : scope * Term -> TERMTYPE
@@ -325,4 +327,48 @@ rules
     
   arithExpOk(s, ADiv(e1, e2)) :-
     arithExpOk(s, e1),
-    arithExpOk(s, e2). 
+    arithExpOk(s, e2).
+
+signature
+  sorts MessageLocation constructors
+    RegularLocation : MessageLocation
+    TryLocation : MessageLocation
+    
+rules
+  messageOk : scope * Message * MessageLocation
+  
+  messageOk(_, NoMessage(), _).
+  
+  messageOk(s, Message(kind, content, origin), loc) :-
+    kindMatchesLocation(kind, loc),
+    messageContentOk(s, content).
+  
+  messageContentOk : scope * MessageContent
+  messageContentOk(_, NoMessageContent()).
+  messageContentOk(_, Str2MessageContent(_)).
+  
+  messageContentOk(_, Formatted(parts)).
+  
+  messageContentPartOk : scope * MessageContentPart
+  messageContentPartsOk maps messageContentPartOk(*, list(*))
+  
+  messageContentPartOk(_, Text(_)).
+  messageContentPartOk(s, Term(t)) :-
+    _ == termOk(s, t).
+  
+  messageOriginOk : scope * MessageOrigin
+  messageOriginOk(_, NoOrigin()).
+  messageOriginOk(_, Origin(Wld())).
+  
+  messageOriginOk(s, Origin(Var(var))) :-
+    _ == resolveVariable(s, var).
+  
+  kindMatchesLocation : MessageKind * MessageLocation
+  kindMatchesLocation(Error(), RegularLocation()).
+  kindMatchesLocation(_, TryLocation()).
+  
+  kindMatchesLocation(Warning(), RegularLocation()) :-
+    false | error "Use 'try' for warnings".
+    
+  kindMatchesLocation(Note(), RegularLocation()) :-
+    false | error "Use 'try' for notes".  
