@@ -247,18 +247,21 @@ rules
     vars == removeDuplicateVars(patternsOk(s, ATS, args)),
     declareVariables(s, vars).
     
-  ruleHeadOk(s, F(id, args, result)) :- {ATS RT vs1 vs2 vars ys}
+  ruleHeadOk(s, F(id, args, result)) :- {ATS RT vs1 vs2 vars}
     typeOfConstraint(s, id) == (ATS, RT),
     vs1 == patternsOk(s, ATS, args),
     vs2 == patternOk(s, RT, result),
     vars == removeDuplicateVars(concat(vs1, vs2)),
-    ys == declareVariables(s, vars).
+    declareVariables(s, vars).
     
   ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
   
   //Checking patterns and extracting new variables
   patternOk: scope * TERMTYPE * Term -> list((string * TERMTYPE))
+  
+  patternOk(_, INT(), Int2Term(_)) = [].
+  patternOk(_, STRING(), Str2Term(_)) = [].
   
   patternOk(_, _, Var2Term(Wld())) = [].
   patternOk(s, T, Var2Term(Var(var))) = [(var, T)].
@@ -282,8 +285,12 @@ rules
     T == typeOfSort(s, sid),
     vars == patternsOk(s, TS, ts).  
   
-  patternOk(_, INT(), Int2Term(_)) = [].
-  patternOk(_, STRING(), Str2Term(_)) = [].
+  patternOk(s, T, As(Wld(), term)) = patternOk(s, T, term).    
+  patternOk(s, T, As(Var(var), term)) = [(var, T)|vars] :-
+    vars == patternOk(s, T, term).
+  
+  patternOk(s, T, Ascribe(term, ty)) = patternOk(s, T, term) :-
+    T == sortRefToType(s, ty).
   
   patternsOk: scope * list(TERMTYPE) * list(Term) -> list((string * TERMTYPE))
   
@@ -382,6 +389,15 @@ rules
         (ATS, RT) == typeOfConstraint(s, cid),
         RT != UNIT() | error "Inline notation can only be used for functional constraints",
         ATS == termsOk(s, ts).
+    
+    termOk(s, As(Wld(), term)) = termOk(s, term).
+    termOk(s, As(Var(var), term)) = T :-
+        T == typeOfVariable(s, var),
+        T == termOk(s, term).
+    
+    termOk(s, Ascribe(term, ty)) = T :-
+        T == termOk(s, term),
+        T == sortRefToType(s, ty).
      
     termOk(s, ArithOp(aExp)) = INT() :-
         arithExpOk(s, aExp). 
