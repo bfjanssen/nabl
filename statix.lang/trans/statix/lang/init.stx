@@ -45,7 +45,7 @@ rules
   
   declareConstraint(s, id, T) :-
     !constrain[id, T] in s,
-    resolveConstraint(s, id) == [(_, (_, _))] | error $[Duplicate constraint "[id]"].
+    resolveConstraint(s, id) == [(_, (_, _))] | error $[Duplicate constraint [id]].
   
   resolveConstraint(s, id) = ps :-
     query constrain
@@ -53,16 +53,22 @@ rules
         in s |-> ps.
   
   typeOfConstraint(s, id) = T :- {id'}
-    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint "[id]" not defined].
+    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined].
   
   // VARIABLES      
   declareVariable: scope * string * TERMTYPE
+  declareVariables: scope * list((string * TERMTYPE))
   resolveVariable: scope * string -> list((path * (string * TERMTYPE)))
   typeOfVariable: scope * string -> TERMTYPE
   
   declareVariable(s, id, T) :-
      !var[id, T] in s,
      resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].     
+  
+  declareVariables(_, []).
+  declareVariables(s, [(id, T)| xs]) :-
+    declareVariable(s, id, T),
+    declareVariables(s, xs).
   
   resolveVariable(s, id) = ps :-
     query var
@@ -71,7 +77,7 @@ rules
         in s |-> ps.
   
   typeOfVariable(s, id) = T :- {id'}
-    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable "[id]" not defined].
+    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable [id] not defined].
   
   // SORTS
   declareSort: scope * string * TERMTYPE
@@ -80,7 +86,7 @@ rules
   
   declareSort(s, id, T) :-
     !sort[id, T] in s,
-    resolveSort(s, id) == [(_, (_, _))] | error $[Duplicate sort "[id]"].
+    resolveSort(s, id) == [(_, (_, _))] | error $[Duplicate sort [id]].
   
   resolveSort(s, id) = ps :-
     query sort
@@ -88,7 +94,7 @@ rules
         in s |-> ps.
   
   typeOfSort(s, id) = T :- {id'}
-    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort "[id]" not defined].
+    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined].
   
   // CONSTRUCTORS
   declareConstructor: scope * string * int * (list(TERMTYPE) * string)
@@ -97,7 +103,7 @@ rules
   
   declareConstructor(s, id, arity, T) :-
     !construct[id, arity, T] in s,
-    resolveConstructor(s, id, arity) == [(_, (_, _, _))] | error $[Duplicate constructor "[id]/[arity]"].
+    resolveConstructor(s, id, arity) == [(_, (_, _, _))] | error $[Duplicate constructor [id]/[arity]].
   
   resolveConstructor(s, id, arity) = ps :-
     query construct
@@ -105,7 +111,7 @@ rules
         in s |-> ps.
         
   typeOfConstructor(s, id, arity) = T :- {id' arity'}
-    resolveConstructor(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor "[id]/[arity]" not defined].
+    resolveConstructor(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
 
 rules
     sortRefLength : list(SortRef) -> int
@@ -119,6 +125,25 @@ rules
     termLength([]) = 0.
     termLength([_|tail]) = #(1 + sum) :-
         sum == termLength(tail).
+    
+    concat : list((string * TERMTYPE)) * list((string * TERMTYPE)) -> list((string * TERMTYPE))
+    
+    concat([], ys) = ys.
+    concat([x|xs],ys) = [x|concat(xs, ys)].
+    
+    removeDuplicateVars : list((string * TERMTYPE)) -> list((string * TERMTYPE))
+    
+    removeDuplicateVars([]) = [].
+    removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
+        xs' == filterVars(xs, x).
+    
+    filterVars : list((string * TERMTYPE)) * (string * TERMTYPE) -> list((string * TERMTYPE))
+    
+    filterVars([], _) = [].
+    filterVars([(id, T)|xs], (id, T)) = filterVars(xs, (id, T)).
+    filterVars([(id, T1)|xs], (id, T2)) = xs :-
+        false | error $[Variable [id] cannot have both type [T1] and type [T2]].
+    filterVars([x|xs], f) = [x|filterVars(xs, f)].
     
 rules
     unifyTypes: TERMTYPE * TERMTYPE
@@ -217,48 +242,62 @@ rules
   
   ruleHeadOk: scope * RuleHead
   
-  ruleHeadOk(s, C(id, args)) :- {ATS}
+  ruleHeadOk(s, C(id, args)) :- {ATS vars}
     typeOfConstraint(s, id) == (ATS, UNIT()),
-    paramsOk(s, ATS, args).
+    vars == removeDuplicateVars(patternsOk(s, ATS, args)),
+    declareVariables(s, vars).
     
-  ruleHeadOk(s, F(id, args, result)) :- {ATS RT}
+  ruleHeadOk(s, F(id, args, result)) :- {ATS RT vs1 vs2 vars ys}
     typeOfConstraint(s, id) == (ATS, RT),
-    paramsOk(s, ATS, args),
-    paramOk(s, RT, result).
+    vs1 == patternsOk(s, ATS, args),
+    vs2 == patternOk(s, RT, result),
+    vars == removeDuplicateVars(concat(vs1, vs2)),
+    ys == declareVariables(s, vars).
     
   ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
   
-  //Checking parameters an declaring variables
-  paramOk: scope * TERMTYPE * Term
-  paramsOk maps paramOk(*, list(*), list(*))
-  listparamOk maps paramOk(*, *, list(*))
+  //Checking patterns and extracting new variables
+  patternOk: scope * TERMTYPE * Term -> list((string * TERMTYPE))
   
-  paramOk(_, _, Var2Term(Wld())).
-  paramOk(s, T, Var2Term(Var(var))) :-
-    declareVariable(s, var, T).
+  patternOk(_, _, Var2Term(Wld())) = [].
+  patternOk(s, T, Var2Term(Var(var))) = [(var, T)].
   
-  paramOk(s, T, Tuple(ts)) :- {TS}
+  patternOk(s, T, Tuple(ts)) = vars :- {TS}
     T == TUPLE(TS),
-    paramsOk(s, TS, ts).
+    vars == patternsOk(s, TS, ts).
     
-  paramOk(s, T, List(xs)) :- {LT}
+  patternOk(s, T, List(xs)) = vars :- {LT}
     T == LIST(LT),
-    listparamOk(s, LT, xs).
+    vars == listpatternOk(s, LT, xs).
     
-  paramOk(s, T, ListTail(xs, tail)) :- {LT}
+  patternOk(s, T, ListTail(xs, tail)) = concat(vs1, vs2) :- {LT}
     T == LIST(LT),
-    listparamOk(s, LT, xs),
-    paramOk(s, T, tail).
+    vs1 == listpatternOk(s, LT, xs),
+    vs2 == patternOk(s, T, tail).
   
-  paramOk(s, T, Op(id, Terms2CommaTerms(ts))) :- {TS sid len}
+  patternOk(s, T, Op(id, Terms2CommaTerms(ts))) = vars :- {TS sid len}
     len == termLength(ts),
     (TS, sid) == typeOfConstructor(s, id, len),
     T == typeOfSort(s, sid),
-    paramsOk(s, TS, ts).  
+    vars == patternsOk(s, TS, ts).  
   
-  paramOk(_, INT(), Int2Term(_)).
-  paramOk(_, STRING(), Str2Term(_)).
+  patternOk(_, INT(), Int2Term(_)) = [].
+  patternOk(_, STRING(), Str2Term(_)) = [].
+  
+  patternsOk: scope * list(TERMTYPE) * list(Term) -> list((string * TERMTYPE))
+  
+  patternsOk(_, [], []) = [].
+  patternsOk(s, [T|TS], [x|xs]) = concat(vs1, vs2) :-
+    vs1 == patternOk(s, T, x),
+    vs2 == patternsOk(s, TS, xs).
+  
+  listpatternOk: scope * TERMTYPE * list(Term) -> list((string * TERMTYPE))
+  
+  listpatternOk(_, _, []) = [].
+  listpatternOk(s, T, [x|xs]) = concat(vs1, vs2) :-
+    vs1 == patternOk(s, T, x),
+    vs2 == listpatternOk(s, T, xs).
     
 rules
   cDeclOk: scope * CDecl
