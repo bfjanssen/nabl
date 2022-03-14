@@ -251,12 +251,13 @@ rules
     declareVariables(s, vars),
     @a.type := PRED(ATS).
     
-  ruleHeadOk(s, F(id, args, result)) :- {ATS RT vs1 vs2 vars}
+  ruleHeadOk(s, a@F(id, args, result)) :- {ATS RT vs1 vs2 vars}
     typeOfConstraint(s, id) == (ATS, RT),
     vs1 == patternsOk(s, ATS, args),
     vs2 == patternOk(s, RT, result),
     vars == removeDuplicateVars(concat(vs1, vs2)),
-    declareVariables(s, vars).
+    declareVariables(s, vars),
+    @a.type := FUN(ATS, RT).
     
   ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
@@ -269,43 +270,56 @@ rules
   patternOk(_, STRING(), Str2Term(a@Str(_))) = [] :-
     @a.type := STRING().
   
-  patternOk(_, _, Var2Term(Wld())) = [].
-  patternOk(s, T, Var2Term(Var(var))) = [(var, T)].
+  patternOk(_, T, Var2Term(a@Wld())) = [] :-
+    @a.type := T.
+  patternOk(s, T, Var2Term(a@Var(var))) = [(var, T)] :-
+    @a.type := T.
   
-  patternOk(s, T, Tuple(ts)) = vars :- {TS}
+  patternOk(s, T, a@Tuple(ts)) = vars :- {TS}
     T == TUPLE(TS),
-    vars == patternsOk(s, TS, ts).
+    vars == patternsOk(s, TS, ts),
+    @a.type := T.
     
-  patternOk(s, T, List(xs)) = vars :- {LT}
+  patternOk(s, T, a@List(xs)) = vars :- {LT}
     T == LIST(LT),
-    vars == listpatternOk(s, LT, xs).
+    vars == listpatternOk(s, LT, xs),
+    @a.type := T.
     
-  patternOk(s, T, ListTail(xs, tail)) = concat(vs1, vs2) :- {LT}
+  patternOk(s, T, a@ListTail(xs, tail)) = concat(vs1, vs2) :- {LT}
     T == LIST(LT),
     vs1 == listpatternOk(s, LT, xs),
-    vs2 == patternOk(s, T, tail).
+    vs2 == patternOk(s, T, tail),
+    @a.type := T.
   
-  patternOk(s, T, Op(id, Terms2CommaTerms(ts))) = vars :- {TS sid len}
+  patternOk(s, T, a@Op(id, Terms2CommaTerms(ts))) = vars :- {TS sid len}
     len == termLength(ts),
     (TS, sid) == typeOfConstructor(s, id, len),
     T == typeOfSort(s, sid),
-    vars == patternsOk(s, TS, ts).  
+    vars == patternsOk(s, TS, ts),
+    @a.type := T.  
   
-  patternOk(s, T, COp(cid, Terms2CommaTerms(ts))) = vars :- {RT ATS}
+  patternOk(s, T, a@COp(cid, Terms2CommaTerms(ts))) = vars :- {RT ATS}
     (ATS, RT) == typeOfConstraint(s, cid),
     RT != UNIT() | error "Inline notation can only be used for functional constraints",
     RT == T,
-    vars == patternsOk(s, ATS, ts).
+    vars == patternsOk(s, ATS, ts),
+    @a.type := T.
   
-  patternOk(s, T, As(Wld(), term)) = patternOk(s, T, term).    
-  patternOk(s, T, As(Var(var), term)) = [(var, T)|vars] :-
-    vars == patternOk(s, T, term).
+  patternOk(s, T, a@As(v@Wld(), term)) = patternOk(s, T, term) :-
+    @a.type := T,
+    @v.type := T.    
+  patternOk(s, T, a@As(v@Var(var), term)) = [(var, T)|vars] :-
+    vars == patternOk(s, T, term),
+    @a.type := T,
+    @v.type := T.
   
-  patternOk(s, T, Ascribe(term, ty)) = patternOk(s, T, term) :-
-    T == sortRefToType(s, ty).
+  patternOk(s, T, a@Ascribe(term, ty)) = patternOk(s, T, term) :-
+    T == sortRefToType(s, ty),
+    @a.type := T.
   
-  patternOk(_, T, ArithOp(aExp)) = arithPatternOk(aExp) :-
-    T == INT().
+  patternOk(_, T, a@ArithOp(aExp)) = arithPatternOk(aExp) :-
+    T == INT(),
+    @a.type := T.
   
   arithPatternOk: ArithExp -> list((string * TERMTYPE))
   
@@ -364,8 +378,11 @@ rules
     declareConstraint(s, id, (TS, UNIT())),
     @a.type := PRED(TS).
   
-  cDeclOk(s, CDecl(_, id, FunType(tys, rtty))) :-
-    declareConstraint(s, id, (sortRefToTypes(s, tys), sortRefToType(s, rtty))).
+  cDeclOk(s, CDecl(_, id, a@FunType(tys, rtty))) :- {TS RT}
+    TS == sortRefToTypes(s, tys),
+    RT == sortRefToType(s, rtty),
+    declareConstraint(s, id, (TS, RT)),
+    @a.type := FUN(TS, RT).
   
   sortRefToType: scope * SortRef -> TERMTYPE
   sortRefToTypes maps sortRefToType(*, list(*)) = list(*)
@@ -374,18 +391,26 @@ rules
     @a.type := INT().
   sortRefToType(_, a@StringSort()) = STRING() :-
     @a.type := STRING().
-  sortRefToType(_, PathSort()) = PATH().
-  sortRefToType(_, LabelSort()) = LABEL().
-  sortRefToType(_, ScopeSort()) = SCOPE().
-  sortRefToType(_, AstIdSort()) = AST_ID().
+  sortRefToType(_, a@PathSort()) = PATH() :-
+    @a.type := PATH().
+  sortRefToType(_, a@LabelSort()) = LABEL() :-
+    @a.type := LABEL().
+  sortRefToType(_, a@ScopeSort()) = SCOPE() :-
+    @a.type := SCOPE().
+  sortRefToType(_, a@AstIdSort()) = AST_ID() :-
+    @a.type := AST_ID().
   
-  sortRefToType(s, ListSort(ty)) = LIST(T) :-
-    T == sortRefToType(s, ty).
+  sortRefToType(s, a@ListSort(ty)) = LIST(T) :-
+    T == sortRefToType(s, ty),
+    @a.type := LIST(T).
     
-  sortRefToType(s, TupleSort(tys)) = TUPLE(TS) :-
-    TS == sortRefToTypes(s, tys).  
+  sortRefToType(s, a@TupleSort(tys)) = TUPLE(TS) :-
+    TS == sortRefToTypes(s, tys),
+    @a.type := TUPLE(TS).  
     
-  sortRefToType(s, Sort2SortRef(SimpleSort(sid))) = typeOfSort(s, sid).
+  sortRefToType(s, Sort2SortRef(a@SimpleSort(sid))) = T :-
+    T == typeOfSort(s, sid),
+    @a.type := T.
       
 rules
     constraintOk : scope * Constraint
