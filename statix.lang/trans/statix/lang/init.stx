@@ -285,12 +285,55 @@ rules
     T == typeOfSort(s, sid),
     vars == patternsOk(s, TS, ts).  
   
+  patternOk(s, T, COp(cid, Terms2CommaTerms(ts))) = vars :- {RT ATS}
+    (ATS, RT) == typeOfConstraint(s, cid),
+    RT != UNIT() | error "Inline notation can only be used for functional constraints",
+    RT == T,
+    vars == patternsOk(s, ATS, ts).
+  
   patternOk(s, T, As(Wld(), term)) = patternOk(s, T, term).    
   patternOk(s, T, As(Var(var), term)) = [(var, T)|vars] :-
     vars == patternOk(s, T, term).
   
   patternOk(s, T, Ascribe(term, ty)) = patternOk(s, T, term) :-
     T == sortRefToType(s, ty).
+  
+  patternOk(_, T, ArithOp(aExp)) = arithPatternOk(aExp) :-
+    T == INT().
+  
+  arithPatternOk: ArithExp -> list((string * TERMTYPE))
+  
+  arithPatternOk(Int2ArithExp(_)) = [].
+  arithPatternOk(Var2ArithExp(Wld())) = [].
+  arithPatternOk(Var2ArithExp(Var(var))) = [(var, INT())].
+  
+  arithPatternOk(AAdd(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(ASub(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(AMul(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(AMin(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(AMax(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(ADiv(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
+    
+  arithPatternOk(AMod(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(e1),
+    vs2 == arithPatternOk(e2).
   
   patternsOk: scope * list(TERMTYPE) * list(Term) -> list((string * TERMTYPE))
   
