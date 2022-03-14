@@ -5,12 +5,20 @@ imports
   signatures/statix/lang/Core-sig
 
   nabl2/api
+  
+  statix/api
 
   statix/lang/normalize/-
 
-rules
+signature
+  constructors
+    StxType : Term -> Annotation
 
+rules
   normalize(|a) =
+    stx-add-anno-types(|a)
+
+  normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
   ; normalize-add-anno-types(|a)
   ; normalize-mapping-constraints(|a)
@@ -34,3 +42,15 @@ rules // util
   normalize-in-sections(replace):
       Module(x, section*){a*} -> Module(x, section'*){a*}
     where (section'*, _) := <replaceconcat-in-sections(replace)> section*
+    
+  stx-add-anno-types(|a) = topdown(try(stx--add-anno-type(|a)))
+  
+  stx--add-anno-type(|a): t -> <stx-set-anno-type(|ty)> t
+    where
+      ty := <stx-get-ast-type(|a)> t
+
+  stx-remove-anno-type = remove-annotations(?StxType(_))
+
+  stx-set-anno-type(|ty) = replace-annotation(?StxType(_)|StxType(ty))
+  
+  stx-get-anno-type = get-annotation(?StxType(<id>))
