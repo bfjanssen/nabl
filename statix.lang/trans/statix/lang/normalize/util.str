@@ -7,12 +7,52 @@ imports
 
   nabl2/shared/vars
   nabl2/api
+  
+  statix/api
 
   statix/runtime/constraints
 
   signatures/statix/lang/-
   statix/lang/statics/-
   statix/lang/util
+
+signature
+  constructors
+    StxType : Term -> Annotation
+    OfSort : Term -> Annotation
+    PRED : list(Term) -> Term
+    FUN : list(Term) * Term -> Term
+
+rules
+  //TEMPORARY LOCATION FOR THESE ANNOTATION STRATEGIES
+    
+  stx-add-anno-types(|a) = topdown(try(stx--add-anno-type(|a)))
+  
+  stx--add-anno-type(|a): t -> <stx-set-anno-type(|ty')> t
+    where
+      ty := <stx-get-ast-type(|a)> t;
+      ty' := <clean-annotations> ty
+  
+  clean-annotations:
+    PRED(tys) -> <remove-annotations(?OfSort(_))> PRED(tys')
+    where
+        tys' := <map(clean-annotations)> tys
+  
+  clean-annotations:
+    FUN(tys, rty) -> <remove-annotations(?OfSort(_))> FUN(tys', rty')
+    where
+        tys' := <map(clean-annotations)> tys;
+        rty' := <clean-annotations> rty
+  
+  clean-annotations:
+    ty -> <remove-annotations(?OfSort(_))> ty
+  
+  stx-remove-anno-type = remove-annotations(?StxType(_))
+
+  stx-set-anno-type(|ty) = replace-annotation(?StxType(_)|StxType(ty))
+  
+  stx-get-anno-type = get-annotation(?StxType(<id>))
+
 
 rules
 
@@ -39,11 +79,11 @@ rules
 rules
 
   norm-get-ast-type =
-    nabl2-get-anno-type
+    stx-get-anno-type
  <+ fail-warn-msg(|"Missing AST type")
 
   norm-set-ast-type(|ty) =
-    nabl2-set-anno-type(|ty)
+    stx-set-anno-type(|ty)
 
   norm-copy-ast-type(|t) =
     nabl2-copy-anno-type(|t)
