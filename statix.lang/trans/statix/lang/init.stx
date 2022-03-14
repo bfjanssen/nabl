@@ -8,7 +8,7 @@ imports
   
 signature
     sorts
-        TERMTYPE LABELTYPE
+        TERMTYPE LABELTYPE ITYPE
         
     constructors
        INT      :   TERMTYPE
@@ -25,6 +25,9 @@ signature
        
        SIMPLELABEL  : LABELTYPE
        RELATION     : list(TERMTYPE) -> LABELTYPE
+       
+       PRED     :   list(TERMTYPE) -> ITYPE
+       FUN      :   list(TERMTYPE) * TERMTYPE -> ITYPE
        
     relations
         mod         :   string -> scope
@@ -242,10 +245,11 @@ rules
   
   ruleHeadOk: scope * RuleHead
   
-  ruleHeadOk(s, C(id, args)) :- {ATS vars}
+  ruleHeadOk(s, a@C(id, args)) :- {ATS vars}
     typeOfConstraint(s, id) == (ATS, UNIT()),
     vars == removeDuplicateVars(patternsOk(s, ATS, args)),
-    declareVariables(s, vars).
+    declareVariables(s, vars),
+    @a.type := PRED(ATS).
     
   ruleHeadOk(s, F(id, args, result)) :- {ATS RT vs1 vs2 vars}
     typeOfConstraint(s, id) == (ATS, RT),
@@ -260,8 +264,10 @@ rules
   //Checking patterns and extracting new variables
   patternOk: scope * TERMTYPE * Term -> list((string * TERMTYPE))
   
-  patternOk(_, INT(), Int2Term(_)) = [].
-  patternOk(_, STRING(), Str2Term(_)) = [].
+  patternOk(_, INT(), Int2Term(a@Int(_))) = [] :-
+    @a.type := INT().
+  patternOk(_, STRING(), Str2Term(a@Str(_))) = [] :-
+    @a.type := STRING().
   
   patternOk(_, _, Var2Term(Wld())) = [].
   patternOk(s, T, Var2Term(Var(var))) = [(var, T)].
@@ -353,8 +359,10 @@ rules
   cDeclOk: scope * CDecl
   cDeclsOk maps cDeclOk(*, list(*))
   
-  cDeclOk(s, CDecl(_, id, SimpleType(tys))) :-
-    declareConstraint(s, id, (sortRefToTypes(s, tys), UNIT())).
+  cDeclOk(s, CDecl(_, id, a@SimpleType(tys))) :- {TS}
+    TS == sortRefToTypes(s, tys),
+    declareConstraint(s, id, (TS, UNIT())),
+    @a.type := PRED(TS).
   
   cDeclOk(s, CDecl(_, id, FunType(tys, rtty))) :-
     declareConstraint(s, id, (sortRefToTypes(s, tys), sortRefToType(s, rtty))).
@@ -362,8 +370,10 @@ rules
   sortRefToType: scope * SortRef -> TERMTYPE
   sortRefToTypes maps sortRefToType(*, list(*)) = list(*)
   
-  sortRefToType(_, IntSort()) = INT().
-  sortRefToType(_, StringSort()) = STRING().
+  sortRefToType(_, a@IntSort()) = INT() :-
+    @a.type := INT().
+  sortRefToType(_, a@StringSort()) = STRING() :-
+    @a.type := STRING().
   sortRefToType(_, PathSort()) = PATH().
   sortRefToType(_, LabelSort()) = LABEL().
   sortRefToType(_, ScopeSort()) = SCOPE().
@@ -403,8 +413,10 @@ rules
     termOk : scope * Term -> TERMTYPE
     termsOk maps termOk(*, list(*)) = list(*)
     
-    termOk(_, Int2Term(_)) = INT().
-    termOk(_, Str2Term(_)) = STRING().
+    termOk(_, Int2Term(a@Int(_))) = INT() :-
+        @a.type := INT().
+    termOk(_, Str2Term(a@Str(_))) = STRING() :-
+        @a.type := STRING().
     
     termOk(_, Var2Term(Wld())) = UNKNOWN().
     termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).

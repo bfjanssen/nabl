@@ -13,6 +13,9 @@ imports
 signature
   constructors
     StxType : Term -> Annotation
+    OfSort : Term -> Annotation
+    PRED : list(Term) -> Term
+    FUN : list(Term) * Term -> Term
 
 rules
   normalize(|a) =
@@ -42,13 +45,30 @@ rules // util
   normalize-in-sections(replace):
       Module(x, section*){a*} -> Module(x, section'*){a*}
     where (section'*, _) := <replaceconcat-in-sections(replace)> section*
+  
+  //TEMPORARY LOCATION FOR THESE ANNOTATION STRATEGIES
     
   stx-add-anno-types(|a) = topdown(try(stx--add-anno-type(|a)))
   
-  stx--add-anno-type(|a): t -> <stx-set-anno-type(|ty)> t
+  stx--add-anno-type(|a): t -> <stx-set-anno-type(|ty')> t
     where
-      ty := <stx-get-ast-type(|a)> t
-
+      ty := <stx-get-ast-type(|a)> t;
+      ty' := <clean-annotations> ty
+  
+  clean-annotations:
+    PRED(tys) -> <remove-annotations(?OfSort(_))> PRED(tys')
+    where
+        tys' := <map(clean-annotations)> tys
+  
+  clean-annotations:
+    FUN(tys, rty) -> <remove-annotations(?OfSort(_))> FUN(tys', rty')
+    where
+        tys' := <map(clean-annotations)> tys;
+        rty' := <clean-annotations> rty
+  
+  clean-annotations:
+    ty -> <remove-annotations(?OfSort(_))> ty
+  
   stx-remove-anno-type = remove-annotations(?StxType(_))
 
   stx-set-anno-type(|ty) = replace-annotation(?StxType(_)|StxType(ty))
