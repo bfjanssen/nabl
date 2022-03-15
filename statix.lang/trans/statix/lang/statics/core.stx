@@ -1,4 +1,4 @@
-module statix/lang/init
+module statix/lang/statics/core
 
 imports
   signatures/Statix2Lang-sig
@@ -8,7 +8,8 @@ imports
   
 signature
     sorts
-        TERMTYPE LABELTYPE ITYPE
+        TERMTYPE ITYPE
+        LABELTYPE
         
     constructors
        INT      :   TERMTYPE
@@ -40,6 +41,7 @@ signature
     name-resolution
         labels P
 
+// Working with Relations
 rules
   // CONSTRAINTS
   declareConstraint: scope * string * (list(TERMTYPE) * TERMTYPE)
@@ -116,6 +118,7 @@ rules
   typeOfConstructor(s, id, arity) = T :- {id' arity'}
     resolveConstructor(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
 
+// Utility
 rules
     sortRefLength : list(SortRef) -> int
     

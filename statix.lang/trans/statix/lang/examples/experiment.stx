@@ -1,0 +1,41 @@
+module statix/lang/examples/experiment
+
+rules
+    rule: int * list(int) -> int
+    
+    rule(8, [8, 9]) = 9.
+    
+    rule2: (int * string)
+    
+    rule2((#(x - y), "hello")).
+    
+    rule3: list(int)
+    
+    rule3([8|[8, 8]]).
+    
+    rule4: int * int -> int
+    
+    rule4(#(3 + 4 + x), y) = 8 :-
+        x #< y.
+    
+signature
+    sorts
+        INT = int
+        STR = string
+        STR2 = STR
+        ArithExp
+        StrExp
+        
+    constructors
+        Plus : INT * INT -> ArithExp
+        Concat : STR * STR2 -> StrExp      
+        
+rules
+    wrongPlus: ArithExp -> int
+    wrongPlus(Plus(x, y)) = x.
+    
+    wrongConcat: StrExp -> string
+    wrongConcat(Concat(x, "hi")) = x.
+    
+    correctPlus: ArithExp -> int
+    correctPlus(Plus(x, y)) = #(x + y).

@@ -1,0 +1,7 @@
+module simple2
+
+rules
+
+simple: int * int -> int
+
+simple(x, y) = simple(y, x).
