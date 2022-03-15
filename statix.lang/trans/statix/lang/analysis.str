@@ -34,7 +34,7 @@ signature
 
 rules // Analysis
 
-  editor-analyze = stx-editor-analyze(desugar-all;pre-analyze, post-analyze|"statix/lang/init", "projectOk", "fileOk")
+  editor-analyze = stx-editor-analyze(desugar-all;pre-analyze, post-analyze|"statix/lang/statics/core", "projectOk", "fileOk")
   pre-analyze  = origin-track-forced(explicate-injections-Statix-Start)
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
