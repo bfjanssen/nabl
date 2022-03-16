@@ -489,8 +489,8 @@ context-free sorts
 
 context-free syntax
 
-  MessageContent.NoMessageContent 	=
-  MessageContent           			= Str
+  MessageContent.NoMessageContent   =
+  MessageContent                    = Str
 
   MessageContentPart.Term = <[<Term>]>
   MessageContentPart.Text = MessageChars

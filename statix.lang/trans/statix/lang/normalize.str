@@ -5,7 +5,7 @@ imports
   signatures/statix/lang/Core-sig
 
   nabl2/api
-  
+
   statix/api
 
   statix/lang/normalize/-
@@ -13,7 +13,7 @@ imports
 rules
   normalize(|a) =
     stx-add-anno-types(|a)
-  ; normalize-functional-constraints 
+  ; normalize-functional-constraints
 
   normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
@@ -39,5 +39,3 @@ rules // util
   normalize-in-sections(replace):
       Module(x, section*){a*} -> Module(x, section'*){a*}
     where (section'*, _) := <replaceconcat-in-sections(replace)> section*
-  
-  
