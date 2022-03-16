@@ -1,7 +1,0 @@
-module statix/lang/examples/simple
-
-rules
-
-simple: int * int -> int
-
-simple(x, y) = 8.
