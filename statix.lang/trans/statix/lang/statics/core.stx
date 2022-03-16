@@ -296,6 +296,7 @@ rules
     @a.type := T.
 
   patternOk(s, T, a@As(v@Wld(), term)) = patternOk(s, T, term) :-
+    try { false } | warning "Ascribing to a wildcard is counterintuitive",
     @a.type := T,
     @v.type := T.
   patternOk(s, T, a@As(v@Var(var), term)) = [(var, T)|vars] :-
@@ -457,7 +458,8 @@ rules
     FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
     ATS == termsOk(s, ts).
 
-  termOk(s, As(Wld(), term)) = termOk(s, term).
+  termOk(s, As(Wld(), term)) = termOk(s, term) :-
+    try { false } | warning "Ascribing to a wildcard is counterintuitive".
   termOk(s, As(Var(var), term)) = T :-
     T == typeOfVariable(s, var),
     T == termOk(s, term).
