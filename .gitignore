@@ -70,5 +70,3 @@ buildNumber.properties
 gradle-app.setting
 !gradle-wrapper.jar
 .gradletasknamecache
-
-*.ps1
