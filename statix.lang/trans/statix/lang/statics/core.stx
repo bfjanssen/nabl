@@ -41,7 +41,7 @@ rules
 
   resolveConstraint(s, id) = ps :-
     query predicate
-        filter P* and {x :- x == id}
+        filter P* and { x :- x == id }
         in s |-> ps.
 
   typeOfConstraint(s, id) = T :- {id'}
@@ -64,8 +64,8 @@ rules
 
   resolveVariable(s, id) = ps :-
     query var
-        filter P* and {x :- x == id}
-        min $ < P and { _, _ :- true }
+        filter P* and { x :- x == id }
+        min $ < P
         in s |-> ps.
 
   typeOfVariable(s, id) = T :- {id'}
@@ -82,7 +82,7 @@ rules
 
   resolveSort(s, id) = ps :-
     query sort
-        filter P* and {x :- x == id}
+        filter P* and { x :- x == id }
         in s |-> ps.
 
   typeOfSort(s, id) = T :- {id'}
@@ -99,7 +99,7 @@ rules
 
   resolveCons(s, id, arity) = ps :-
     query cons
-        filter P* and {(x, y) :- x == id, y == arity}
+        filter P* and { (x, y) :- x == id, y == arity }
         in s |-> ps.
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
@@ -107,52 +107,52 @@ rules
 
 // Utility
 rules
-    sortRefLength : list(SortRef) -> int
+  sortRefListLength : list(SortRef) -> int
 
-    sortRefLength([]) = 0.
-    sortRefLength([_|tail]) = #(1 + sum) :-
-        sum == sortRefLength(tail).
+  sortRefListLength([]) = 0.
+  sortRefListLength([_|tail]) = #(1 + sum) :-
+    sum == sortRefListLength(tail).
 
-    termLength : list(Term) -> int
+  termLength : list(Term) -> int
 
-    termLength([]) = 0.
-    termLength([_|tail]) = #(1 + sum) :-
-        sum == termLength(tail).
+  termLength([]) = 0.
+  termLength([_|tail]) = #(1 + sum) :-
+    sum == termLength(tail).
 
-    concat : list((string * TType)) * list((string * TType)) -> list((string * TType))
+  concat : list((string * TType)) * list((string * TType)) -> list((string * TType))
 
-    concat([], ys) = ys.
-    concat([x|xs],ys) = [x|concat(xs, ys)].
+  concat([], ys) = ys.
+  concat([x|xs],ys) = [x|concat(xs, ys)].
 
-    removeDuplicateVars : list((string * TType)) -> list((string * TType))
+  removeDuplicateVars : list((string * TType)) -> list((string * TType))
 
-    removeDuplicateVars([]) = [].
-    removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
-        xs' == filterVars(xs, x).
+  removeDuplicateVars([]) = [].
+  removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
+    xs' == filterVars(xs, x).
 
-    filterVars : list((string * TType)) * (string * TType) -> list((string * TType))
+  filterVars : list((string * TType)) * (string * TType) -> list((string * TType))
 
-    filterVars([], _) = [].
-    filterVars([(id, T)|xs], (id, T)) = filterVars(xs, (id, T)).
-    filterVars([(id, T1)|xs], (id, T2)) = xs :-
-        false | error $[Variable [id] cannot have both type [T1] and type [T2]].
-    filterVars([x|xs], f) = [x|filterVars(xs, f)].
+  filterVars([], _) = [].
+  filterVars([(id, T)|xs], (id, T)) = filterVars(xs, (id, T)).
+  filterVars([(id, T1)|xs], (id, T2)) = xs :-
+    false | error $[Variable [id] cannot have both type [T1] and type [T2]].
+  filterVars([x|xs], f) = [x|filterVars(xs, f)].
 
 rules
-    unifyTypes: TType * TType
-    unifyTypeList maps unifyTypes(list(*), list(*))
+  typeEq: TType * TType
+  typeListEq maps typeEq(list(*), list(*))
 
-    unifyTypes(LIST(T1), LIST(T2)) :-
-        unifyTypes(T1, T2).
+  typeEq(LIST(T1), LIST(T2)) :-
+    typeEq(T1, T2).
 
-    unifyTypes(TUPLE(TS1), TUPLE(TS2)) :-
-        unifyTypeList(TS1, TS2).
+  typeEq(TUPLE(TS1), TUPLE(TS2)) :-
+    typeListEq(TS1, TS2).
 
-    unifyTypes(UNKNOWN(), _).
-    unifyTypes(_, UNKNOWN()).
+  typeEq(UNKNOWN(), _).
+  typeEq(_, UNKNOWN()).
 
-    unifyTypes(x, x).
-    unifyTypes(x, y) :- false.
+  typeEq(x, x).
+  typeEq(x, y) :- false.
 
 rules
   projectOk: scope
@@ -222,9 +222,9 @@ rules
     declareCons(s, id, 0, ([], SORT(sid))).
 
   opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :- {len}
-    len == sortRefLength(refs),
-    SORT(sid) == typeOfSort(s,sid),
-    declareCons(s, id, len, (sortRefToTypes(s, refs), SORT(sid))).
+    len == sortRefListLength(refs),
+    SORT(sid) == typeOfSort(s, sid),
+    declareCons(s, id, len, (sortRefsToTypes(s, refs), SORT(sid))).
 
 rules
   ruleOk: scope * Rule
@@ -274,12 +274,12 @@ rules
 
   patternOk(s, T, a@List(xs)) = vars :- {LT}
     T == LIST(LT),
-    vars == listpatternOk(s, LT, xs),
+    vars == listPatternOk(s, LT, xs),
     @a.type := T.
 
   patternOk(s, T, a@ListTail(xs, tail)) = concat(vs1, vs2) :- {LT}
     T == LIST(LT),
-    vs1 == listpatternOk(s, LT, xs),
+    vs1 == listPatternOk(s, LT, xs),
     vs2 == patternOk(s, T, tail),
     @a.type := T.
 
@@ -352,30 +352,30 @@ rules
     vs1 == patternOk(s, T, x),
     vs2 == patternsOk(s, TS, xs).
 
-  listpatternOk: scope * TType * list(Term) -> list((string * TType))
+  listPatternOk: scope * TType * list(Term) -> list((string * TType))
 
-  listpatternOk(_, _, []) = [].
-  listpatternOk(s, T, [x|xs]) = concat(vs1, vs2) :-
+  listPatternOk(_, _, []) = [].
+  listPatternOk(s, T, [x|xs]) = concat(vs1, vs2) :-
     vs1 == patternOk(s, T, x),
-    vs2 == listpatternOk(s, T, xs).
+    vs2 == listPatternOk(s, T, xs).
 
 rules
   cDeclOk: scope * CDecl
   cDeclsOk maps cDeclOk(*, list(*))
 
   cDeclOk(s, CDecl(_, id, a@SimpleType(tys))) :- {TS}
-    TS == sortRefToTypes(s, tys),
+    TS == sortRefsToTypes(s, tys),
     declareConstraint(s, id, PRED(TS)),
     @a.type := PRED(TS).
 
   cDeclOk(s, CDecl(_, id, a@FunType(tys, rtty))) :- {TS RT}
-    TS == sortRefToTypes(s, tys),
+    TS == sortRefsToTypes(s, tys),
     RT == sortRefToType(s, rtty),
     declareConstraint(s, id, FUN(TS, RT)),
     @a.type := FUN(TS, RT).
 
   sortRefToType: scope * SortRef -> TType
-  sortRefToTypes maps sortRefToType(*, list(*)) = list(*)
+  sortRefsToTypes maps sortRefToType(*, list(*)) = list(*)
 
   sortRefToType(_, a@IntSort()) = INT() :-
     @a.type := INT().
@@ -395,7 +395,7 @@ rules
     @a.type := LIST(T).
 
   sortRefToType(s, a@TupleSort(tys)) = TUPLE(TS) :-
-    TS == sortRefToTypes(s, tys),
+    TS == sortRefsToTypes(s, tys),
     @a.type := TUPLE(TS).
 
   sortRefToType(s, Sort2SortRef(a@SimpleSort(sid))) = T :-
@@ -403,72 +403,72 @@ rules
     @a.type := T.
 
 rules
-    constraintOk : scope * Constraint
+  constraintOk : scope * Constraint
 
-    constraintOk(_, CTrue()).
+  constraintOk(_, CTrue()).
 
-    constraintOk(s, CFalse(m)) :-
-        messageOk(s, m, RegularLocation()).
+  constraintOk(s, CFalse(m)) :-
+    messageOk(s, m).
 
-    constraintOk(s, CConj(l, r)) :-
-        constraintOk(s, l),
-        constraintOk(s, r).
+  constraintOk(s, CConj(l, r)) :-
+    constraintOk(s, l),
+    constraintOk(s, r).
 
-    constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
-        T1 == termOk(s, l),
-        T2 == termOk(s, r),
-        unifyTypes(T1, T2) | error $[Cannot unify types [T1] and [T2]].
+  constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    typeEq(T1, T2) | error $[Cannot unify types [T1] and [T2]].
 
-    constraintOk(s, CArith(e1, _, e2, m)) :-
-        arithExpOk(s, e1),
-        arithExpOk(s, e2),
-        messageOk(s, m, RegularLocation()).
+  constraintOk(s, CArith(e1, _, e2, m)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2),
+    messageOk(s, m).
 
 rules
-    termOk : scope * Term -> TType
-    termsOk maps termOk(*, list(*)) = list(*)
+  termOk : scope * Term -> TType
+  termsOk maps termOk(*, list(*)) = list(*)
 
-    termOk(_, Int2Term(a@Int(_))) = INT() :-
-        @a.type := INT().
-    termOk(_, Str2Term(a@Str(_))) = STRING() :-
-        @a.type := STRING().
+  termOk(_, Int2Term(a@Int(_))) = INT() :-
+    @a.type := INT().
+  termOk(_, Str2Term(a@Str(_))) = STRING() :-
+    @a.type := STRING().
 
-    termOk(_, Var2Term(Wld())) = UNKNOWN().
-    termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
+  termOk(_, Var2Term(Wld())) = UNKNOWN().
+  termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
 
-    termOk(_, List([])) = LIST(UNKNOWN()).
-    termOk(s, List(xs)) = LIST(T) :-
-        [T|_] == termsOk(s, xs).
+  termOk(_, List([])) = LIST(UNKNOWN()).
+  termOk(s, List(xs)) = LIST(T) :-
+    [T|_] == termsOk(s, xs).
 
-    termOk(s, ListTail([], tail)) = LIST(T) :-
-        LIST(T) == termOk(s, tail).
-    termOk(s, ListTail(hs, tail)) = LIST(T) :-
-        [T|_] == termsOk(s, hs),
-        LIST(T) == termOk(s, tail).
+  termOk(s, ListTail([], tail)) = LIST(T) :-
+    LIST(T) == termOk(s, tail).
+  termOk(s, ListTail(hs, tail)) = LIST(T) :-
+    [T|_] == termsOk(s, hs),
+    LIST(T) == termOk(s, tail).
 
-    termOk(s, Tuple(t)) = TUPLE(TS) :-
-        TS == termsOk(s, t).
+  termOk(s, Tuple(t)) = TUPLE(TS) :-
+    TS == termsOk(s, t).
 
-    termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
-        len == termLength(ts),
-        (CTS, T) == typeOfCons(s, id, len),
-        CTS == termsOk(s, ts).
+  termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
+    len == termLength(ts),
+    (CTS, T) == typeOfCons(s, id, len),
+    CTS == termsOk(s, ts).
 
-    termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
-        FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
-        ATS == termsOk(s, ts).
+  termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
+    FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
+    ATS == termsOk(s, ts).
 
-    termOk(s, As(Wld(), term)) = termOk(s, term).
-    termOk(s, As(Var(var), term)) = T :-
-        T == typeOfVariable(s, var),
-        T == termOk(s, term).
+  termOk(s, As(Wld(), term)) = termOk(s, term).
+  termOk(s, As(Var(var), term)) = T :-
+    T == typeOfVariable(s, var),
+    T == termOk(s, term).
 
-    termOk(s, Ascribe(term, ty)) = T :-
-        T == termOk(s, term),
-        T == sortRefToType(s, ty).
+  termOk(s, Ascribe(term, ty)) = T :-
+    T == termOk(s, term),
+    T == sortRefToType(s, ty).
 
-    termOk(s, ArithOp(aExp)) = INT() :-
-        arithExpOk(s, aExp).
+  termOk(s, ArithOp(aExp)) = INT() :-
+    arithExpOk(s, aExp).
 
 rules
   arithExpOk : scope * ArithExp
@@ -507,19 +507,21 @@ rules
     arithExpOk(s, e1),
     arithExpOk(s, e2).
 
-signature
-  sorts MessageLocation constructors
-    RegularLocation : MessageLocation
-    TryLocation : MessageLocation
-
 rules
-  messageOk : scope * Message * MessageLocation
+  messageOk : scope * Message
 
-  messageOk(_, NoMessage(), _).
+  messageOk(_, NoMessage()).
+  messageOk(s, Message(kind, content, origin)) :-
+    kind == Error() | error $[use 'try' for [kindToString(kind)]],
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
 
-  messageOk(s, Message(kind, content, origin), loc) :-
-    kindMatchesLocation(kind, loc),
-    messageContentOk(s, content).
+  tryMessageOk : scope * Message
+
+  tryMessageOk(_, NoMessage()).
+  tryMessageOk(s, Message(_, content, origin)) :-
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
 
   messageContentOk : scope * MessageContent
   messageContentOk(_, NoMessageContent()).
@@ -541,12 +543,7 @@ rules
   messageOriginOk(s, Origin(Var(var))) :-
     _ == resolveVariable(s, var).
 
-  kindMatchesLocation : MessageKind * MessageLocation
-  kindMatchesLocation(Error(), RegularLocation()).
-  kindMatchesLocation(_, TryLocation()).
+  kindToString : MessageKind -> string
 
-  kindMatchesLocation(Warning(), RegularLocation()) :-
-    false | error "Use 'try' for warnings".
-
-  kindMatchesLocation(Note(), RegularLocation()) :-
-    false | error "Use 'try' for notes".
+  kindToString(Warning()) = "warnings".
+  kindToString(Note()) = "notes".
