@@ -10,9 +10,6 @@ imports
 
   nabl2/runtime/common/AST
 
-context-free sorts
-  NaBL2-AnalysisResult
-
 context-free syntax
 
   NaBL2-AnalysisResult.Constraints = <
@@ -20,10 +17,6 @@ context-free syntax
       <{NaBL2-Constraint "\n"}*>
     }
   >
-
-context-free sorts
-  NaBL2-ScopeEntry NaBL2-ScopePartEntry NaBL2-DeclEntry NaBL2-RefEntry
-  NaBL2-DirectEntry NaBL2-ImportEntry NaBL2-AssocEntry NaBL2-DeclType
 
 context-free syntax
 
@@ -33,7 +26,7 @@ context-free syntax
     }
   >
 
-  NaBL2-ScopeEntry.DebugScope = <
+  NaBL2-ScopeEntry.Scope = <
     scope <NaBL2-Scope> {
       <{NaBL2-ScopePartEntry "\n"}*>
     }
@@ -74,9 +67,6 @@ context-free syntax
   NaBL2-DeclType.Type   = < : <NaBL2-CTerm>>
   NaBL2-DeclType.NoType = <>
 
-context-free sorts
-  NaBL2-UnifierEntry
-
 context-free syntax
 
   NaBL2-AnalysisResult.Unifier = <
@@ -86,9 +76,6 @@ context-free syntax
   >
 
   NaBL2-UnifierEntry = <<NaBL2-CVar> := <NaBL2-CTerm>>
-
-context-free sorts
-  NaBL2-ResolutionEntry NaBL2-ResolutionResult NaBL2-ResolutionPath
 
 context-free syntax
 
@@ -119,9 +106,6 @@ context-free syntax
       <{NaBL2-CTerm "\n"}*>
     }
   >
-
-context-free sorts
-  NaBL2-AstPropertyEntry
 
 context-free syntax
 

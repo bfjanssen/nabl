@@ -7,24 +7,14 @@ dependencies:
   compile:
   - org.metaborg:org.metaborg.meta.lang.esv:${metaborgBaselineVersion}
   # org.metaborg:org.metaborg.meta.lang.stratego:${metaborgBaselineVersion}
-  - org.metaborg:org.metaborg.meta.lang.template:${metaborgVersion}
+  - org.metaborg:org.metaborg.meta.lang.template:${metaborgBaselineVersion}
   - org.metaborg:org.metaborg.meta.nabl2.lang:${metaborgVersion}
   # org.metaborg:dynsem:${metaborgVersion}
-  - org.metaborg:sdf3.ext.statix:${metaborgVersion}
-  - org.metaborg:statix.lang:${metaborgVersion}
   source:
   - org.metaborg:meta.lib.spoofax:${metaborgVersion}
   - org.metaborg:org.metaborg.meta.nabl2.shared:${metaborgVersion}
 
 exports:
-- directory: src-gen/statix
-  includes: "**/*.aterm"
-
-- language: StatixLang
-  directory: src-gen/statix
-  includes:
-  - signatures/nabl2/**/*.stx
-  - signatures/NaBL2Runtime-sig.stx
 
   ## Stratego
 - language: Stratego-Sugar

@@ -3,7 +3,6 @@ module nabl2/runtime/common/CTerms
 imports
 
   nabl2/runtime/common/Native
-  nabl2/shared/common/CTerms
 
 context-free syntax
 
