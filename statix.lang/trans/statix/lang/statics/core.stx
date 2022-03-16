@@ -12,8 +12,6 @@ signature
     LABELTYPE
 
   constructors
-    UNKNOWN : TType
-
     SIMPLELABEL  : LABELTYPE
     RELATION     : IType -> LABELTYPE
 
@@ -147,9 +145,6 @@ rules
 
   typeEq(TUPLE(TS1), TUPLE(TS2)) :-
     typeListEq(TS1, TS2).
-
-  typeEq(UNKNOWN(), _).
-  typeEq(_, UNKNOWN()).
 
   typeEq(x, x).
   typeEq(x, y) :- false.
@@ -418,7 +413,12 @@ rules
   constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
     T1 == termOk(s, l),
     T2 == termOk(s, r),
-    typeEq(T1, T2) | error $[Cannot unify types [T1] and [T2]].
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]].
+
+  constraintOk(s, CInequal(l, r, m)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]].
 
   constraintOk(s, CArith(e1, _, e2, m)) :-
     arithExpOk(s, e1),
@@ -435,10 +435,9 @@ rules
   termOk(_, Str2Term(a@Str(_))) = STRING() :-
     @a.type := STRING().
 
-  termOk(_, Var2Term(Wld())) = UNKNOWN().
+  termOk(_, Var2Term(Wld())) = _.
   termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
 
-//  termOk(_, List([])) = LIST(UNKNOWN()).
   termOk(s, List(xs)) = LIST(T) :-
     T == listTermOk(s, xs).
 
