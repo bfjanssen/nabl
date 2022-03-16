@@ -11,21 +11,23 @@ imports
 
 /*context-free*/ sorts
 
+  Stx-Occurrence
   Stx-OccurrencePosition
+  Stx-Scope
+  Stx-TermIndex
   Stx-ATerm
-  Stx-Var
 
 
 context-free syntax
 
-  Stx-Occurrence.StatixOccurrence = <<Stx-STRING>{<{Stx-ATerm ", "}*> <Stx-TermIndex>}>
+  Stx-Occurrence.StxOccurrence = <<Stx-STRING>{<{Stx-ATerm ", "}*> <Stx-TermIndex>}>
 
   Stx-OccurrencePosition = Stx-TermIndex
 
   Stx-Scope.Scope = <#<Stx-STRING>-<Stx-STRING>>
 
   Stx-TermIndex.TermIndex = <@<Stx-STRING>-<Stx-INT>>
-  Stx-TermIndex.NoTermId      = <@->
+  Stx-TermIndex.NoId      = <@->
 
   Stx-Var.Var = <?<Stx-STRING>-<Stx-STRING>>
 

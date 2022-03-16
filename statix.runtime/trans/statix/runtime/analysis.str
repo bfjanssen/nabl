@@ -631,9 +631,9 @@ rules
   stx--diff-scopegraphs(|s0) =
     prim("STX_diff_scopegraphs",s0)
 
-  stx--get-occurrence-ns: StatixOccurrence(ns, _, _) -> ns
+  stx--get-occurrence-ns: StxOccurrence(ns, _, _) -> ns
 
-  stx--get-occurrence-terms: StatixOccurrence(_, ts, _) -> ts
+  stx--get-occurrence-terms: StxOccurrence(_, ts, _) -> ts
 
 rules // debug
 
