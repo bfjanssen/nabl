@@ -13,10 +13,7 @@ template options
 sorts
 
   NaBL2-Scope
-  NaBL2-Occurrence
   NaBL2-OccurrenceIndex
-  NaBL2-Namespace
-  NaBL2-NamespaceRef
 
 context-free syntax
 
@@ -27,8 +24,8 @@ context-free syntax
   NaBL2-Occurrence                     = NaBL2-CVar
   NaBL2-CTerm                          = NaBL2-Occurrence
 
-  NaBL2-Namespace.SCNamespace          = NaBL2-NamespaceId
+  NaBL2-Namespace.Namespace            = NaBL2-NamespaceId
 
   NaBL2-NamespaceRef                   = NaBL2-Namespace
-  NaBL2-NamespaceRef.SCDefaultNamespace=
+  NaBL2-NamespaceRef.DefaultNamespace  =
 

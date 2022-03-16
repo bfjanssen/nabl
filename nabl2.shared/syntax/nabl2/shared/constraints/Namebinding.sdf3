@@ -6,7 +6,6 @@ imports
   nabl2/shared/common/Messages
   nabl2/shared/common/Resolution
   nabl2/shared/common/ScopeGraph
-  nabl2/shared/constraints/Base
 
 template options
 
@@ -27,9 +26,6 @@ syntax
 
   NaBL2-Constraint-CF.CAssoc       = NaBL2-CTerm-CF LAYOUT?-CF "?=" NaBL2-NLabel-CF "=>" LAYOUT?-CF NaBL2-CTerm-CF LAYOUT?-CF NaBL2-Message-CF
 
-
-context-free sorts
-  NaBL2-ELabel NaBL2-NLabel
 
 context-free syntax
 

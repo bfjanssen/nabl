@@ -9,9 +9,6 @@ template options
 
   keyword -/- [a-zA-Z0-9\'\_]
 
-sorts
-  NaBL2-SetExpr NaBL2-SetProj
-
 syntax
 
   NaBL2-SetExpr-CF.EmptySet = "0"
@@ -22,9 +19,6 @@ syntax
 
   NaBL2-SetProj-CF.NoProjection =
   NaBL2-SetProj-CF.Projection   = "/" NaBL2-ProjectionId-LEX
-
-context-free sorts
-  NaBL2-CSet
 
 context-free syntax
 

@@ -10,9 +10,6 @@ template options
 
   keyword -/- [a-zA-Z0-9\'\_]
 
-context-free sorts
-  NaBL2-Constraint
-
 context-free syntax
 
   NaBL2-Constraint.CTrue   = <true <NaBL2-MessagePosition>>
@@ -41,9 +38,6 @@ context-free priorities
   } > { right:
     NaBL2-Constraint.CConj
   }
-
-lexical sorts
-  NaBL2-ConstraintPriority
 
 lexical syntax
 

@@ -5,7 +5,6 @@ imports
   nabl2/shared/common/Messages
   nabl2/shared/common/Sets
   nabl2/shared/common/CTerms
-  nabl2/shared/constraints/Base
 
 template options
 
