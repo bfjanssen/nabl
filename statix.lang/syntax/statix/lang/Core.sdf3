@@ -14,7 +14,7 @@ template options
  ******************************************************************/
 
 context-free sorts
-  Module Section Import 
+  Module Section Import
 
 context-free syntax
 
@@ -97,7 +97,7 @@ lexical syntax
 
 /******************************************************************
  * Base Constraints                                               *
- ******************************************************************/ 
+ ******************************************************************/
 
 context-free syntax
 
@@ -253,7 +253,7 @@ context-free syntax
 
   Path = PathLit
 
-sorts
+context-free sorts
   PathLit
 
 syntax
@@ -395,7 +395,7 @@ context-free priorities
     Term.As
   > Term.Ascribe
 
-sorts
+context-free sorts
   Str
 
 syntax
@@ -422,7 +422,7 @@ lexical restrictions
  * Arithmetic                                                          *
  ******************************************************************/
 
-sorts
+context-free sorts
   ArithOp
 
 syntax
@@ -474,7 +474,7 @@ context-free syntax
   MessageKind.Warning    = <warning>
   MessageKind.Note       = <note>
 
-sorts
+context-free sorts
   MessageContent MessageOrigin
 
 syntax

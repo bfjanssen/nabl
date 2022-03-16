@@ -1,0 +1,12 @@
+module statix/API
+
+/* lexical */ sorts
+
+  Stx-INT
+  Stx-STRING
+
+/* context-free */ sorts
+
+  Stx-Occurrence
+  Stx-Scope
+  Stx-TermIndex

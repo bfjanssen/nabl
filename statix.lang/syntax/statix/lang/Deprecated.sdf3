@@ -85,7 +85,7 @@ context-free syntax
 
   Occurrence = OccurrenceLit // this indirection is necessary to solve parse errors
 
-sorts
+context-free sorts
   OccurrencePosition OccurrenceLit
 
 syntax

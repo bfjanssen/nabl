@@ -7,18 +7,16 @@ imports
   statix/lang/Common
   statix/lang/Core
 
-//  statix/API
+  statix/API
 
 sorts
 
   IType // internal type
   TType // term type
   TTypes
-  TERMTYPE
-  ITYPE
-  
+
   // STUB FIXES
-  NaBL2Occurrence Stx-INT
+  NaBL2Occurrence
 
 context-free syntax
 
@@ -29,33 +27,20 @@ context-free syntax
 
   TTypes = {TType " * "}*
 
-//  TType.SORT       = <<NaBL2Occurrence>>
-//  TType.INT        = <int>
-//  TType.STRING     = <string>
-//  TType.PATH       = <path>
-//  TType.LABEL      = <label>
-//  TType.OCCURRENCE = <occurrence>
-//  TType.AST_ID     = <astId>
-//  TType.SCOPE      = <scope>
-//  TType.LIST       = <list(<TType>)>
-//  TType.TUPLE      = <(<TTypes>)>
-  
-  ITYPE.PRED = TERMTYPE*
-  ITYPE.FUN  = TERMTYPE* TERMTYPE
+  IType.PRED = TType*
+  IType.FUN  = TType* TType
 
-  TERMTYPE.SORT       = <<SortId>>
-  TERMTYPE.INT        = <int>
-  TERMTYPE.STRING     = <string>
-  TERMTYPE.PATH       = <path>
-  TERMTYPE.LABEL      = <label>
-  TERMTYPE.OCCURRENCE = <occurrence>
-  TERMTYPE.AST_ID     = <astId>
-  TERMTYPE.SCOPE      = <scope>
-  TERMTYPE.LIST       = <list(<TERMTYPE>)>
-  TERMTYPE.TUPLE      = TERMTYPE*
-  TERMTYPE.UNKNOWN    = <?>
-  TERMTYPE.UNIT       = <unit>
-  
+  TType.SORT       = <<SortId>>
+  TType.INT        = <int>
+  TType.STRING     = <string>
+  TType.PATH       = <path>
+  TType.LABEL      = <label>
+  TType.OCCURRENCE = <occurrence>
+  TType.AST_ID     = <astId>
+  TType.SCOPE      = <scope>
+  TType.LIST       = <list(<TType>)>
+  TType.TUPLE      = <(<{TType " * "}*>)>
+
 sorts
 
   ExtOrigin // custom prettyprint rule in statix/lang/scope-extension.str

@@ -6,7 +6,7 @@ imports
   statix/lang/Core
   statix/lang/Sugar
 
-//  statix/API
+  statix/API
 
 template options
 
@@ -21,9 +21,9 @@ context-free syntax // desugared terms
   Lift.TupleLift = <(<{Lift ", "}*>)>
 
 context-free syntax // runtime terms
-// NOT BEING USED DUE TO IMPORT PROBLEMS
-//  Term = Label
-//  Term = Stx-Scope
-//  Term = Stx-TermIndex
-//
-//  TermOrTermIndex = Stx-TermIndex
+
+  Term = Label
+  Term = Stx-Scope
+  Term = Stx-TermIndex
+
+  TermOrTermIndex = Stx-TermIndex
