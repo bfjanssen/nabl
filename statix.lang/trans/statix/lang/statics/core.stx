@@ -8,25 +8,25 @@ imports
   signatures/statix/lang/Type-sig
 
 signature
-    sorts
-        LABELTYPE
+  sorts
+    LABELTYPE
 
-    constructors
-       UNKNOWN  :   TType
+  constructors
+    UNKNOWN : TType
 
-       SIMPLELABEL  : LABELTYPE
-       RELATION     : IType -> LABELTYPE
+    SIMPLELABEL  : LABELTYPE
+    RELATION     : IType -> LABELTYPE
 
-    relations
-        mod         :   ModuleId -> scope
-        predicate   :   ConstraintId -> IType
-        var         :   VARID -> TType
-        sort        :   SortId -> TType
-        cons        :   OpId * int -> (list(TType) * TType)
-        label       :   RelationId -> LABELTYPE
+  relations
+    mod         :   ModuleId -> scope
+    predicate   :   ConstraintId -> IType
+    var         :   VARID -> TType
+    sort        :   SortId -> TType
+    cons        :   OpId * int -> (list(TType) * TType)
+    label       :   RelationId -> LABELTYPE
 
-    name-resolution
-        labels P
+  name-resolution
+    labels P
 
 // Working with Relations
 rules
@@ -427,6 +427,7 @@ rules
 rules
   termOk : scope * Term -> TType
   termsOk maps termOk(*, list(*)) = list(*)
+  listTermOk maps termOk(*, list(*)) = *
 
   termOk(_, Int2Term(a@Int(_))) = INT() :-
     @a.type := INT().
@@ -436,14 +437,12 @@ rules
   termOk(_, Var2Term(Wld())) = UNKNOWN().
   termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
 
-  termOk(_, List([])) = LIST(UNKNOWN()).
+//  termOk(_, List([])) = LIST(UNKNOWN()).
   termOk(s, List(xs)) = LIST(T) :-
-    [T|_] == termsOk(s, xs).
+    T == listTermOk(s, xs).
 
-  termOk(s, ListTail([], tail)) = LIST(T) :-
-    LIST(T) == termOk(s, tail).
   termOk(s, ListTail(hs, tail)) = LIST(T) :-
-    [T|_] == termsOk(s, hs),
+    T == listTermOk(s, hs),
     LIST(T) == termOk(s, tail).
 
   termOk(s, Tuple(t)) = TUPLE(TS) :-
