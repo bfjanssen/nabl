@@ -511,8 +511,9 @@ rules
   messageOk : scope * Message
 
   messageOk(_, NoMessage()).
-  messageOk(s, Message(kind, content, origin)) :-
-    kind == Error() | error $[use 'try' for [kindToString(kind)]],
+  messageOk(s, Message(kind, content, origin)) :- {kindString}
+    kindString == kindToString(kind),
+    kind == Error() | error $[use 'try' for [kindString]],
     messageContentOk(s, content),
     messageOriginOk(s, origin).
 
