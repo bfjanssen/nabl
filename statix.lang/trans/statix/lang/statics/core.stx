@@ -46,18 +46,18 @@ rules
     resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined].
 
   // VARIABLES
-  declareVariable: scope * VARID * TType
-  declareVariables: scope * list((VARID * TType))
+  declareVariable: scope * VARID
+  declareVariables: scope * list(VARID)
   resolveVariable: scope * VARID -> list((path * (VARID * TType)))
   typeOfVariable: scope * VARID -> TType
 
-  declareVariable(s, id, T) :-
+  declareVariable(s, id) :- {T}
      !var[id, T] in s,
      resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].
 
   declareVariables(_, []).
-  declareVariables(s, [(id, T)| xs]) :-
-    declareVariable(s, id, T),
+  declareVariables(s, [id| xs]) :-
+    declareVariable(s, id),
     declareVariables(s, xs).
 
   resolveVariable(s, id) = ps :-
@@ -117,24 +117,28 @@ rules
   termLength([_|tail]) = #(1 + sum) :-
     sum == termLength(tail).
 
-  concat : list((string * TType)) * list((string * TType)) -> list((string * TType))
+  concat : list(string) * list(string) -> list(string)
 
   concat([], ys) = ys.
   concat([x|xs],ys) = [x|concat(xs, ys)].
 
-  removeDuplicateVars : list((string * TType)) -> list((string * TType))
+  removeDuplicateVars : list(string) -> list(string)
 
   removeDuplicateVars([]) = [].
   removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
     xs' == filterVars(xs, x).
 
-  filterVars : list((string * TType)) * (string * TType) -> list((string * TType))
+  filterVars : list(string) * string -> list(string)
 
   filterVars([], _) = [].
-  filterVars([(id, T)|xs], (id, T)) = filterVars(xs, (id, T)).
-  filterVars([(id, T1)|xs], (id, T2)) = xs :-
-    false | error $[Variable [id] cannot have both type [T1] and type [T2]].
+  filterVars([id|xs], id) = filterVars(xs, id).
   filterVars([x|xs], f) = [x|filterVars(xs, f)].
+
+  varsToStringList : list(Var) -> list(string)
+
+  varsToStringList([]) = [].
+  varsToStringList([Wld()|xs]) = varsToStringList(xs).
+  varsToStringList([Var(x)|xs]) = [x|varsToStringList(xs)].
 
 rules
   typeEq: TType * TType
@@ -250,7 +254,7 @@ rules
     cDeclOk(s, cd).
 
   //Checking patterns and extracting new variables
-  patternOk: scope * TType * Term -> list((string * TType))
+  patternOk: scope * TType * Term -> list(string)
 
   patternOk(_, INT(), Int2Term(a@Int(_))) = [] :-
     @a.type := INT().
@@ -259,7 +263,8 @@ rules
 
   patternOk(_, T, Var2Term(a@Wld())) = [] :-
     @a.type := T.
-  patternOk(s, T, Var2Term(a@Var(var))) = [(var, T)] :-
+  patternOk(s, T, Var2Term(a@Var(var))) = [var] :-
+    T == typeOfVariable(s, var),
     @a.type := T.
 
   patternOk(s, T, a@Tuple(ts)) = vars :- {TS}
@@ -294,7 +299,8 @@ rules
     try { false } | warning "Ascribing to a wildcard is counterintuitive",
     @a.type := T,
     @v.type := T.
-  patternOk(s, T, a@As(v@Var(var), term)) = [(var, T)|vars] :-
+  patternOk(s, T, a@As(v@Var(var), term)) = [var|vars] :-
+    T == typeOfVariable(s, var),
     vars == patternOk(s, T, term),
     @a.type := T,
     @v.type := T.
@@ -303,52 +309,53 @@ rules
     T == sortRefToType(s, ty),
     @a.type := T.
 
-  patternOk(_, T, a@ArithOp(aExp)) = arithPatternOk(aExp) :-
+  patternOk(s, T, a@ArithOp(aExp)) = arithPatternOk(s, aExp) :-
     T == INT(),
     @a.type := T.
 
-  arithPatternOk: ArithExp -> list((string * TType))
+  arithPatternOk: scope * ArithExp -> list(string)
 
-  arithPatternOk(Int2ArithExp(_)) = [].
-  arithPatternOk(Var2ArithExp(Wld())) = [].
-  arithPatternOk(Var2ArithExp(Var(var))) = [(var, INT())].
+  arithPatternOk(_, Int2ArithExp(_)) = [].
+  arithPatternOk(_, Var2ArithExp(Wld())) = [].
+  arithPatternOk(s, Var2ArithExp(Var(var))) = [var] :-
+    INT() == typeOfVariable(s, var).
 
-  arithPatternOk(AAdd(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, AAdd(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(ASub(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, ASub(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(AMul(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, AMul(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(AMin(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, AMin(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(AMax(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, AMax(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(ADiv(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, ADiv(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(AMod(e1, e2)) = concat(vs1, vs2) :-
-    vs1 == arithPatternOk(e1),
-    vs2 == arithPatternOk(e2).
+  arithPatternOk(s, AMod(e1, e2)) = concat(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
 
-  patternsOk: scope * list(TType) * list(Term) -> list((string * TType))
+  patternsOk: scope * list(TType) * list(Term) -> list(string)
 
   patternsOk(_, [], []) = [].
   patternsOk(s, [T|TS], [x|xs]) = concat(vs1, vs2) :-
     vs1 == patternOk(s, T, x),
     vs2 == patternsOk(s, TS, xs).
 
-  listPatternOk: scope * TType * list(Term) -> list((string * TType))
+  listPatternOk: scope * TType * list(Term) -> list(string)
 
   listPatternOk(_, _, []) = [].
   listPatternOk(s, T, [x|xs]) = concat(vs1, vs2) :-
