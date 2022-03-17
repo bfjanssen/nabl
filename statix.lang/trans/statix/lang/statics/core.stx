@@ -305,6 +305,12 @@ rules
     T == sortRefToType(s, ty),
     @a.type := T.
 
+  patternOk(s, SCOPE(), a@NewOp()) = [] :-
+    @a.type := SCOPE().
+
+  patternOk(s, AST_ID(), a@AstIdOp(t)) = patternOk(s, _, t) :-
+    @a.type := AST_ID().
+
   patternOk(s, T, a@ArithOp(aExp)) = arithPatternOk(s, aExp) :-
     T == INT(),
     @a.type := T.
@@ -438,6 +444,17 @@ rules
     declareVariables(s_exists, varsToStringList(vars)),
     constraintOk(s_exists, c).
 
+  constraintOk(s, CAstId(t1, t2)) :-
+    _ == termOk(s, t1),
+    AST_ID() == termOk(s, t2).
+
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
+    try { false } | warning "Assigning property to wildcard is counterintuitive",
+    _ == termOk(s, t).
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Var(var)), _, _, t)) :-
+    _ == typeOfVariable(s, var),
+    _ == termOk(s, t).
+
   constraintOk(s, CArith(e1, _, e2, m)) :-
     arithExpOk(s, e1),
     arithExpOk(s, e2),
@@ -484,6 +501,11 @@ rules
   termOk(s, Ascribe(term, ty)) = T :-
     T == termOk(s, term),
     T == sortRefToType(s, ty).
+
+  termOk(_, NewOp()) = SCOPE().
+
+  termOk(s, AstIdOp(t)) = AST_ID() :-
+    _ == termOk(s, t).
 
   termOk(s, ArithOp(aExp)) = INT() :-
     arithExpOk(s, aExp).
