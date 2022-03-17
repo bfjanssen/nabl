@@ -9,11 +9,11 @@ imports
 
 signature
   sorts
-    LABELTYPE
+    LType
 
   constructors
-    SIMPLELABEL  : LABELTYPE
-    RELATION     : IType -> LABELTYPE
+    SIMPLELABEL  : LType
+    RELATION     : IType -> LType
 
   relations
     mod         :   ModuleId -> scope
@@ -21,7 +21,7 @@ signature
     var         :   VARID -> TType
     sort        :   SortId -> TType
     cons        :   OpId * int -> (list(TType) * TType)
-    label       :   RelationId -> LABELTYPE
+    label       :   RelationId -> LType
 
   name-resolution
     labels P
@@ -98,6 +98,23 @@ rules
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
     resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
+
+  // RELATIONS OR LABELS
+  declareLabel: scope * RelationId * LType
+  resolveLabel: scope * RelationId -> list((path * (RelationId * LType)))
+  typeOfLabel: scope * RelationId -> LType
+
+  declareLabel(s, id, T) :-
+    !label[id, T] in s,
+    resolveLabel(s, id) == [(_, (_, _))] | error $[Duplicate label/relation [id]].
+
+  resolveLabel(s, id) = ps :-
+    query label
+        filter P* and { x :- x == id }
+        in s |-> ps.
+
+  typeOfLabel(s, id) = T :- {id'}
+    resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined].
 
 // Utility
 rules
@@ -193,6 +210,12 @@ rules
   signatureOk(s, Constraints(decls)) :-
     cDeclsOk(s, decls).
 
+  signatureOk(s, Relations(decls)) :-
+    relDeclsOk(s, decls).
+
+  signatureOk(s, NameResolution(ls)) :-
+    resolutionParamsOk(s, ls).
+
   signatureOk(s, Sorts(sdecls)) :-
     sortDeclsOk(s, sdecls).
 
@@ -248,6 +271,9 @@ rules
 
   ruleOk(s, CDecl2Rule(cd)) :-
     cDeclOk(s, cd).
+
+  ruleOk(s, RelDecl2Rule(rd)) :-
+    relDeclOk(s, rd).
 
   //Checking patterns and extracting new variables
   patternOk: scope * TType * Term -> list(string)
@@ -408,6 +434,29 @@ rules
     @a.type := T.
 
 rules
+  relDeclOk: scope * RelDecl
+  relDeclsOk maps relDeclOk(*, list(*))
+
+  relDeclOk(s, RelDecl(Label(rel), a@SimpleType(tys))) :- {TS}
+    TS == sortRefsToTypes(s, tys),
+    declareLabel(s, rel, RELATION(PRED(TS))),
+    @a.type := PRED(TS).
+
+  relDeclOk(s, RelDecl(Label(rel), a@FunType(tys, rty))) :- {TS RT}
+    TS == sortRefsToTypes(s, tys),
+    RT == sortRefToType(s, rty),
+    declareLabel(s, rel, RELATION(FUN(TS, RT))),
+    @a.type := FUN(TS, RT).
+
+  resolutionParamsOk maps declareLabels(*, list(*))
+  declareLabels: scope * ResolutionParam
+
+  declareLabels(s, Labels([])).
+  declareLabels(s, Labels([Label(l)|xs])) :-
+    declareLabel(s, l, SIMPLELABEL()),
+    declareLabels(s, Labels(xs)).
+
+rules
   constraintOk : scope * Constraint
 
   constraintOk(_, CTrue()).
@@ -421,6 +470,11 @@ rules
 
   constraintOk(s, CNew(vars)) :-
     SCOPE() == typeOfVariables(s, varsToStringList(vars)).
+
+  constraintOk(s, CTellEdge(t1, Label(l), t2)) :-
+    SCOPE() == termOk(s, t1),
+    SIMPLELABEL() == typeOfLabel(s, l),
+    SCOPE() == termOk(s, t2).
 
   constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
     T1 == termOk(s, l),
