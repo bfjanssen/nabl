@@ -420,12 +420,24 @@ rules
   constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
     T1 == termOk(s, l),
     T2 == termOk(s, r),
-    T1 == T2 | error $[Cannot unify types [T1] and [T2]].
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, m).
 
   constraintOk(s, CInequal(l, r, m)) :- {T1 T2}
     T1 == termOk(s, l),
     T2 == termOk(s, r),
-    T1 == T2 | error $[Cannot unify types [T1] and [T2]].
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, m).
+
+  constraintOk(s, C(cid, ts, m)) :- {TS}
+    PRED(TS) == typeOfConstraint(s, cid) | error "Inline notation can only be used for non-functional constraints",
+    TS == termsOk(s, ts),
+    messageOk(s, m).
+
+  constraintOk(s, CExists(vars, c)) :- {s_exists}
+    new s_exists, s_exists -P-> s,
+    declareVariables(s_exists, varsToStringList(vars)),
+    constraintOk(s_exists, c).
 
   constraintOk(s, CArith(e1, _, e2, m)) :-
     arithExpOk(s, e1),
