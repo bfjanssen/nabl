@@ -47,18 +47,14 @@ rules
 
   // VARIABLES
   declareVariable: scope * VARID
-  declareVariables: scope * list(VARID)
+  declareVariables maps declareVariable(*, list(*))
   resolveVariable: scope * VARID -> list((path * (VARID * TType)))
   typeOfVariable: scope * VARID -> TType
+  typeOfVariables maps typeOfVariable(*, list(*)) = *
 
   declareVariable(s, id) :- {T}
      !var[id, T] in s,
      resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].
-
-  declareVariables(_, []).
-  declareVariables(s, [id| xs]) :-
-    declareVariable(s, id),
-    declareVariables(s, xs).
 
   resolveVariable(s, id) = ps :-
     query var
@@ -416,6 +412,9 @@ rules
   constraintOk(s, CConj(l, r)) :-
     constraintOk(s, l),
     constraintOk(s, r).
+
+  constraintOk(s, CNew(vars)) :-
+    SCOPE() == typeOfVariables(s, varsToStringList(vars)).
 
   constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
     T1 == termOk(s, l),
