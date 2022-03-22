@@ -12,7 +12,7 @@ signature
     LType
 
   constructors
-    SIMPLELABEL  : LType
+    EDGE  : LType
     RELATION     : IType -> LType
 
   relations
@@ -130,10 +130,15 @@ rules
   termLength([_|tail]) = #(1 + sum) :-
     sum == termLength(tail).
 
-  concat : list(string) * list(string) -> list(string)
+  concatStringList : list(string) * list(string) -> list(string)
 
-  concat([], ys) = ys.
-  concat([x|xs],ys) = [x|concat(xs, ys)].
+  concatStringList([], ys) = ys.
+  concatStringList([x|xs],ys) = [x|concatStringList(xs, ys)].
+
+  concatTTypeList : list(TType) * list(TType) -> list(TType)
+
+  concatTTypeList([], ys) = ys.
+  concatTTypeList([x|xs],ys) = [x|concatTTypeList(xs, ys)].
 
   removeDuplicateVars : list(string) -> list(string)
 
@@ -152,6 +157,21 @@ rules
   varsToStringList([]) = [].
   varsToStringList([Wld()|xs]) = varsToStringList(xs).
   varsToStringList([Var(x)|xs]) = [x|varsToStringList(xs)].
+
+  inType: IType -> TType
+
+  inType(PRED(TS)) = typesToType(TS).
+  inType(FUN(TS, _)) = typesToType(TS).
+
+  inOutType: IType -> TType
+
+  inOutType(PRED(TS)) = typesToType(TS).
+  inOutType(FUN(TS, RT)) = typesToType(concatTTypeList(TS, [RT])).
+
+  typesToType: list(TType) -> TType
+
+  typesToType([ty]) = ty.
+  typesToType(TS) = TUPLE(TS).
 
 rules
   typeEq: TType * TType
@@ -265,7 +285,7 @@ rules
     FUN(ATS, RT) == typeOfConstraint(s, id),
     vs1 == patternsOk(s, ATS, args),
     vs2 == patternOk(s, RT, result),
-    vars == removeDuplicateVars(concat(vs1, vs2)),
+    vars == removeDuplicateVars(concatStringList(vs1, vs2)),
     declareVariables(s, vars),
     @a.type := FUN(ATS, RT).
 
@@ -299,7 +319,7 @@ rules
     vars == listPatternOk(s, LT, xs),
     @a.type := T.
 
-  patternOk(s, T, a@ListTail(xs, tail)) = concat(vs1, vs2) :- {LT}
+  patternOk(s, T, a@ListTail(xs, tail)) = concatStringList(vs1, vs2) :- {LT}
     T == LIST(LT),
     vs1 == listPatternOk(s, LT, xs),
     vs2 == patternOk(s, T, tail),
@@ -348,45 +368,45 @@ rules
   arithPatternOk(s, Var2ArithExp(Var(var))) = [var] :-
     INT() == typeOfVariable(s, var).
 
-  arithPatternOk(s, AAdd(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, AAdd(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, ASub(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, ASub(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, AMul(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, AMul(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, AMin(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, AMin(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, AMax(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, AMax(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, ADiv(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, ADiv(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  arithPatternOk(s, AMod(e1, e2)) = concat(vs1, vs2) :-
+  arithPatternOk(s, AMod(e1, e2)) = concatStringList(vs1, vs2) :-
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
   patternsOk: scope * list(TType) * list(Term) -> list(string)
 
   patternsOk(_, [], []) = [].
-  patternsOk(s, [T|TS], [x|xs]) = concat(vs1, vs2) :-
+  patternsOk(s, [T|TS], [x|xs]) = concatStringList(vs1, vs2) :-
     vs1 == patternOk(s, T, x),
     vs2 == patternsOk(s, TS, xs).
 
   listPatternOk: scope * TType * list(Term) -> list(string)
 
   listPatternOk(_, _, []) = [].
-  listPatternOk(s, T, [x|xs]) = concat(vs1, vs2) :-
+  listPatternOk(s, T, [x|xs]) = concatStringList(vs1, vs2) :-
     vs1 == patternOk(s, T, x),
     vs2 == listPatternOk(s, T, xs).
 
@@ -453,8 +473,68 @@ rules
 
   declareLabels(s, Labels([])).
   declareLabels(s, Labels([Label(l)|xs])) :-
-    declareLabel(s, l, SIMPLELABEL()),
+    declareLabel(s, l, EDGE()),
     declareLabels(s, Labels(xs)).
+
+  edgeRefOk: scope * EdgeRef
+
+  edgeRefOk(_, TGT()).
+  edgeRefOk(s, Label2EdgeRef(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelPairOk: scope * LabelPair
+  labelPairsOk maps labelPairOk(*, list(*))
+
+  labelPairOk(s, LabelPair(l1, l2)) :-
+    edgeRefOk(s, l1),
+    edgeRefOk(s, l2).
+
+  labelOrdOk: scope * LabelOrd
+  labelOrdOk(s, LabelPairs2LabelOrd(LabelPairs2LabelPairs(ls))) :-
+    labelPairsOk(s, ls).
+
+  labelRegExOk: scope * LabelRE
+
+  labelRegExOk(_, Empty()).
+  labelRegExOk(_, Epsilon()).
+
+  labelRegExOk(s, Label2LabelRE(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelRegExOk(s, Closure(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Neg(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Concat(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, And(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, Or(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  hoConstraintOk: scope * HoConstraint * list(TType)
+
+  hoConstraintOk(_, LTrue(), _).
+  hoConstraintOk(_, LFalse(), _).
+
+  hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
+    new s_hc, s_hc -P-> s,
+    vars == removeDuplicateVars(patternsOk(s_hc, TS, args)),
+    declareVariables(s_hc, vars),
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, LC(cid), TS) :-
+    PRED(TS) == typeOfConstraint(s, cid).
+
+  hoConstraintOk(s, EQ(t), [T]) :-
+    T == termOk(s, t).
 
 rules
   constraintOk : scope * Constraint
@@ -473,7 +553,7 @@ rules
 
   constraintOk(s, CTellEdge(t1, Label(l), t2)) :-
     SCOPE() == termOk(s, t1),
-    SIMPLELABEL() == typeOfLabel(s, l),
+    EDGE() == typeOfLabel(s, l),
     SCOPE() == termOk(s, t2).
 
   constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
@@ -508,6 +588,43 @@ rules
   constraintOk(s, CAstProperty(Var2TermOrTermIndex(Var(var)), _, _, t)) :-
     _ == typeOfVariable(s, var),
     _ == termOk(s, t).
+
+  constraintOk(s, CTellRel(Label2RelRef(Label(rid)), Terms2CommaTerms(ts), st)) :- {T}
+    RELATION(T) == typeOfLabel(s, rid),
+    relationTypesMatch(T, termsOk(s, ts)),
+    SCOPE() == termOk(s, st).
+
+  relationTypesMatch: IType * list(TType)
+
+  relationTypesMatch(PRED(TS), TS).
+  relationTypesMatch(FUN(ATS, RT), TS) :-
+    TS == concatTTypeList(ATS, [RT]).
+
+  constraintOk(s, CResolveQuery(tgt, fltr, qmin, st, result, m)) :- {T}
+    T == queryTargetToType(s, tgt),
+    filterOk(s, fltr, inType(T)),
+    minOk(s, qmin, inType(T)),
+    SCOPE() == termOk(s, st),
+    LIST(TUPLE([PATH(), inOutType(T)])) == termOk(s, result),
+    messageOk(s, m).
+
+  queryTargetToType: scope * QueryTarget -> IType
+
+  queryTargetToType(_, EOP()) = PRED([SCOPE()]).
+  queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(Label(l)))) = T :-
+    RELATION(T) == typeOfLabel(s, l).
+
+  filterOk: scope * QueryFilter * TType
+
+  filterOk(s, Filter(lre, hc), T) :-
+    labelRegExOk(s, lre),
+    hoConstraintOk(s, hc, [T]).
+
+  minOk: scope * QueryMin * TType
+
+  minOk(s, Min(ord, hc), T) :-
+    labelOrdOk(s, ord),
+    hoConstraintOk(s, hc, [T, T]).
 
   constraintOk(s, CArith(e1, _, e2, m)) :-
     arithExpOk(s, e1),
