@@ -18,6 +18,9 @@ rules
   // normalize all higher-order constraint forms to lambda's
 
   normalize-ho-constraints =
+    bottomup(try(replace-ho-constraint))
+
+  normalize-ho-constraints-legacy =
     nabl2-custom-analysis-info-msg(|"| Normalize higher-order constraints...");
     bottomup(try(replace-ho-constraint))
 
@@ -56,6 +59,9 @@ rules
   // the type.
 
   normalize-lambda-patterns =
+    bottomup(try(generalize-lambda-pattern))
+
+  normalize-lambda-patterns-legacy =
     nabl2-custom-analysis-info-msg(|"| Normalize lambda patterns...");
     bottomup(try(generalize-lambda-pattern))
 

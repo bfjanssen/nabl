@@ -14,18 +14,20 @@ rules
   normalize(|a) =
     stx-add-anno-types(|a)
   ; normalize-functional-constraints
+  ; normalize-ho-constraints
   ; normalize-functional-relations
+  ; normalize-lambda-patterns
 
   normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
   ; normalize-add-anno-types(|a)
   ; normalize-mapping-constraints(|a)
   ; normalize-functional-constraints-legacy
-  ; normalize-ho-constraints
+  ; normalize-ho-constraints-legacy
   ; normalize-resolves(|a)
   ; normalize-queries
   ; normalize-functional-relations-legacy
-  ; normalize-lambda-patterns
+  ; normalize-lambda-patterns-legacy
   ; normalize-terms
   ; nabl2-custom-analysis-info-msg(|"| Done.")
 

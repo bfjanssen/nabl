@@ -532,8 +532,10 @@ rules
 
   hoConstraintOk: scope * HoConstraint * list(TType)
 
-  hoConstraintOk(_, LTrue(), _).
-  hoConstraintOk(_, LFalse(), _).
+  hoConstraintOk(_, a@LTrue(), TS) :-
+    @a.type := PRED(TS).
+  hoConstraintOk(_, a@LFalse(), TS) :-
+    @a.type := PRED(TS).
 
   hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
     new s_hc, s_hc -P-> s,
@@ -542,11 +544,13 @@ rules
     constraintOk(s_hc, cnstrnt),
     @a.type := PRED(TS).
 
-  hoConstraintOk(s, LC(cid), TS) :-
-    PRED(TS) == typeOfConstraint(s, cid).
+  hoConstraintOk(s, a@LC(cid), TS) :-
+    PRED(TS) == typeOfConstraint(s, cid),
+    @a.type := PRED(TS).
 
-  hoConstraintOk(s, EQ(t), [T]) :-
-    T == termOk(s, t).
+  hoConstraintOk(s, a@EQ(t), [T]) :-
+    T == termOk(s, t),
+    @a.type := PRED([T]).
 
 rules
   constraintOk : scope * Constraint
