@@ -622,9 +622,11 @@ rules
 
   queryTargetToType: scope * QueryTarget -> IType
 
-  queryTargetToType(_, EOP()) = PRED([SCOPE()]).
-  queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(Label(l)))) = T :-
-    RELATION(T) == typeOfLabel(s, l).
+  queryTargetToType(_, a@EOP()) = PRED([SCOPE()]) :-
+    @a.type := PRED([SCOPE()]).
+  queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(a@Label(l)))) = T :-
+    RELATION(T) == typeOfLabel(s, l),
+    @a.type := T.
 
   filterOk: scope * QueryFilter * TType
 

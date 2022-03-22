@@ -14,6 +14,7 @@ rules
   normalize(|a) =
     stx-add-anno-types(|a)
   ; normalize-functional-constraints
+  ; normalize-functional-relations
 
   normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
@@ -23,7 +24,7 @@ rules
   ; normalize-ho-constraints
   ; normalize-resolves(|a)
   ; normalize-queries
-  ; normalize-functional-relations
+  ; normalize-functional-relations-legacy
   ; normalize-lambda-patterns
   ; normalize-terms
   ; nabl2-custom-analysis-info-msg(|"| Done.")

@@ -19,6 +19,10 @@ rules
   // after lambda's, after normalizing queries
 
   normalize-functional-relations =
+    normalize-in-sections(normalize-functional-reldecl);
+    bottomup(try(normalize-functional-query))
+
+  normalize-functional-relations-legacy =
     nabl2-custom-analysis-info-msg(|"| Normalize functional relations...");
     normalize-in-sections(normalize-functional-reldecl);
     bottomup(try(normalize-functional-query))
@@ -33,7 +37,7 @@ rules
       <+ decl* := []
 
   normalize-functional-query:
-      c@CResolveQuery(rel, Filter(wf, lwf), Min(ord, lord), st, pts, msg) -> c' 
+      c@CResolveQuery(rel, Filter(wf, lwf), Min(ord, lord), st, pts, msg) -> c'
     where ty@FUN(in_tys, out_ty) := <norm-get-ast-type> rel
     with ty'   := <fun-to-pred-type> ty;
          rel'  := <norm-set-ast-type(|ty')> rel;
