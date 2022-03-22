@@ -55,11 +55,17 @@ rules // Normalization
     where ast := <get-normalized-ast>
     with filename := <guarantee-extension(|"normalized.aterm")> path;
          result   := <rename-module(|"normalized");nabl2-simplify-ast-indices> ast
-         
+
+   format-normalized: (_, _, _, path, project-path) -> (filename, result)
+    where ast := <get-normalized-ast>
+    with ext      := <get-extension> path;
+         filename := <guarantee-extension(|$[normalized.[ext]])> path;
+         result   := <rename-module(|"normalized");pp-Statix-string> ast
+
    get-normalized-ast: (_, _, ast, path, project-path) -> ast'
     where a := <stx-get-ast-analysis> ast
     with ast' := <normalize(|a)> ast
-         
+
 rules // Normalization Legacy
 
   show-normalized-aterm-legacy: (_, _, _, path, project-path) -> (filename, result)
