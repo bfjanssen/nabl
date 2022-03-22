@@ -357,6 +357,17 @@ rules
   patternOk(s, AST_ID(), a@AstIdOp(t)) = patternOk(s, _, t) :-
     @a.type := AST_ID().
 
+  patternOk(s, PATH(), Path2Term(PathLit2Path(a@PathEmpty(st)))) = vars :-
+    vars == patternOk(s, SCOPE(), st),
+    @a.type := PATH().
+
+  patternOk(s, PATH(), Path2Term(PathLit2Path(a@PathStep(pt, lt, st)))) = vars :- {vs1 vs2 vs3}
+    vs1 == patternOk(s, PATH(), pt),
+    vs2 == patternOk(s, LABEL(), lt),
+    vs3 == patternOk(s, SCOPE(), st),
+    vars == concatStringList(vs1, concatStringList(vs2, vs3)),
+    @a.type := PATH().
+
   patternOk(s, T, a@ArithOp(aExp)) = arithPatternOk(s, aExp) :-
     T == INT(),
     @a.type := T.
@@ -528,6 +539,7 @@ rules
     new s_hc, s_hc -P-> s,
     vars == removeDuplicateVars(patternsOk(s_hc, TS, args)),
     declareVariables(s_hc, vars),
+    constraintOk(s_hc, cnstrnt),
     @a.type := PRED(TS).
 
   hoConstraintOk(s, LC(cid), TS) :-
@@ -677,6 +689,14 @@ rules
 
   termOk(s, AstIdOp(t)) = AST_ID() :-
     _ == termOk(s, t).
+
+  termOk(s, Path2Term(PathLit2Path(PathEmpty(st)))) = PATH() :-
+    SCOPE() == termOk(s, st).
+
+  termOk(s, Path2Term(PathLit2Path(PathStep(pt, lt, st)))) = PATH() :-
+    PATH() == termOk(s, pt),
+    LABEL() == termOk(s, lt),
+    SCOPE() == termOk(s, st).
 
   termOk(s, ArithOp(aExp)) = INT() :-
     arithExpOk(s, aExp).
