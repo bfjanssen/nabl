@@ -17,6 +17,7 @@ rules
   ; normalize-ho-constraints
   ; normalize-functional-relations
   ; normalize-lambda-patterns
+  ; normalize-terms
 
   normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
@@ -28,7 +29,7 @@ rules
   ; normalize-queries
   ; normalize-functional-relations-legacy
   ; normalize-lambda-patterns-legacy
-  ; normalize-terms
+  ; normalize-terms-legacy
   ; nabl2-custom-analysis-info-msg(|"| Done.")
 
   normalize-add-anno-types(|a) =

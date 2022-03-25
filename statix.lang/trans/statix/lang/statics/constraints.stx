@@ -55,8 +55,9 @@ rules
   constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
     try { false } | warning "Assigning property to wildcard is counterintuitive",
     _ == termOk(s, t).
-  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Var(var)), _, _, t)) :-
-    _ == typeOfVariable(s, var),
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(v@Var(var)), _, _, t)) :- {T}
+    T == typeOfVariable(s, var),
+    @v.type := T,
     _ == termOk(s, t).
 
   constraintOk(s, CArith(e1, _, e2, m)) :-
