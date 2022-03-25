@@ -1,0 +1,138 @@
+module statix/lang/statics/relations
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/types
+  statix/lang/statics/terms
+  statix/lang/statics/constraints
+  statix/lang/statics/rules
+
+rules
+  relDeclOk: scope * RelDecl
+  relDeclsOk maps relDeclOk(*, list(*))
+
+  relDeclOk(s, RelDecl(Label(rel), a@SimpleType(tys))) :- {TS}
+    TS == sortRefsToTypes(s, tys),
+    declareLabel(s, rel, RELATION(PRED(TS))),
+    @a.type := PRED(TS).
+
+  relDeclOk(s, RelDecl(Label(rel), a@FunType(tys, rty))) :- {TS RT}
+    TS == sortRefsToTypes(s, tys),
+    RT == sortRefToType(s, rty),
+    declareLabel(s, rel, RELATION(FUN(TS, RT))),
+    @a.type := FUN(TS, RT).
+
+  resolutionParamsOk maps declareLabels(*, list(*))
+  declareLabels: scope * ResolutionParam
+
+  declareLabels(s, Labels([])).
+  declareLabels(s, Labels([Label(l)|xs])) :-
+    declareLabel(s, l, EDGE()),
+    declareLabels(s, Labels(xs)).
+
+  edgeRefOk: scope * EdgeRef
+
+  edgeRefOk(_, TGT()).
+  edgeRefOk(s, Label2EdgeRef(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelPairOk: scope * LabelPair
+  labelPairsOk maps labelPairOk(*, list(*))
+
+  labelPairOk(s, LabelPair(l1, l2)) :-
+    edgeRefOk(s, l1),
+    edgeRefOk(s, l2).
+
+  labelOrdOk: scope * LabelOrd
+  labelOrdOk(s, LabelPairs2LabelOrd(LabelPairs2LabelPairs(ls))) :-
+    labelPairsOk(s, ls).
+
+  labelRegExOk: scope * LabelRE
+
+  labelRegExOk(_, Empty()).
+  labelRegExOk(_, Epsilon()).
+
+  labelRegExOk(s, Label2LabelRE(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelRegExOk(s, Closure(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Neg(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Concat(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, And(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, Or(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  hoConstraintOk: scope * HoConstraint * list(TType)
+
+  hoConstraintOk(_, a@LTrue(), TS) :-
+    @a.type := PRED(TS).
+  hoConstraintOk(_, a@LFalse(), TS) :-
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
+    new s_hc, s_hc -P-> s,
+    vars == removeDuplicateVars(patternsOk(s_hc, TS, args)),
+    declareVariables(s_hc, vars),
+    constraintOk(s_hc, cnstrnt),
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@LC(cid), TS) :-
+    PRED(TS) == typeOfConstraint(s, cid),
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@EQ(t), [T]) :-
+    T == termOk(s, t),
+    @a.type := PRED([T]).
+
+rules
+  constraintOk(s, CTellRel(Label2RelRef(Label(rid)), Terms2CommaTerms(ts), st)) :- {T}
+    RELATION(T) == typeOfLabel(s, rid),
+    relationTypesMatch(T, termsOk(s, ts)),
+    SCOPE() == termOk(s, st).
+
+  relationTypesMatch: IType * list(TType)
+
+  relationTypesMatch(PRED(TS), TS).
+  relationTypesMatch(FUN(ATS, RT), TS) :-
+    TS == concatTTypeList(ATS, [RT]).
+
+  constraintOk(s, CResolveQuery(tgt, fltr, qmin, st, result, m)) :- {T}
+    T == queryTargetToType(s, tgt),
+    filterOk(s, fltr, inType(T)),
+    minOk(s, qmin, inType(T)),
+    SCOPE() == termOk(s, st),
+    LIST(TUPLE([PATH(), inOutType(T)])) == termOk(s, result),
+    messageOk(s, m).
+
+  queryTargetToType: scope * QueryTarget -> IType
+
+  queryTargetToType(_, a@EOP()) = PRED([SCOPE()]) :-
+    @a.type := PRED([SCOPE()]).
+  queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(a@Label(l)))) = T :-
+    RELATION(T) == typeOfLabel(s, l),
+    @a.type := T.
+
+  filterOk: scope * QueryFilter * TType
+
+  filterOk(s, Filter(lre, hc), T) :-
+    labelRegExOk(s, lre),
+    hoConstraintOk(s, hc, [T]).
+
+  minOk: scope * QueryMin * TType
+
+  minOk(s, Min(ord, hc), T) :-
+    labelOrdOk(s, ord),
+    hoConstraintOk(s, hc, [T, T]).

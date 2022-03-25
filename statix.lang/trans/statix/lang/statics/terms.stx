@@ -1,0 +1,104 @@
+module statix/lang/statics/terms
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Sugar-sig
+  signatures/statix/lang/NoParse-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/types
+
+rules
+  termOk : scope * Term -> TType
+  termsOk maps termOk(*, list(*)) = list(*)
+  listTermOk maps termOk(*, list(*)) = *
+
+  termOk(_, Int2Term(a@Int(_))) = INT() :-
+    @a.type := INT().
+  termOk(_, Str2Term(a@Str(_))) = STRING() :-
+    @a.type := STRING().
+
+  termOk(_, Var2Term(Wld())) = _.
+  termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
+
+  termOk(s, List(xs)) = LIST(T) :-
+    T == listTermOk(s, xs).
+
+  termOk(s, ListTail(hs, tail)) = LIST(T) :-
+    T == listTermOk(s, hs),
+    LIST(T) == termOk(s, tail).
+
+  termOk(s, Tuple(t)) = TUPLE(TS) :-
+    TS == termsOk(s, t).
+
+  termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
+    len == termLength(ts),
+    (CTS, T) == typeOfCons(s, id, len),
+    CTS == termsOk(s, ts).
+
+  termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
+    FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
+    ATS == termsOk(s, ts).
+
+  termOk(s, As(Wld(), term)) = termOk(s, term) :-
+    try { false } | warning "Ascribing to a wildcard is counterintuitive".
+  termOk(s, As(Var(var), term)) = T :-
+    T == typeOfVariable(s, var),
+    T == termOk(s, term).
+
+  termOk(s, Ascribe(term, ty)) = T :-
+    T == termOk(s, term),
+    T == sortRefToType(s, ty).
+
+  termOk(_, NewOp()) = SCOPE().
+
+  termOk(s, AstIdOp(t)) = AST_ID() :-
+    _ == termOk(s, t).
+
+  termOk(s, Path2Term(PathLit2Path(PathEmpty(st)))) = PATH() :-
+    SCOPE() == termOk(s, st).
+
+  termOk(s, Path2Term(PathLit2Path(PathStep(pt, lt, st)))) = PATH() :-
+    PATH() == termOk(s, pt),
+    LABEL() == termOk(s, lt),
+    SCOPE() == termOk(s, st).
+
+  termOk(s, ArithOp(aExp)) = INT() :-
+    arithExpOk(s, aExp).
+
+rules
+  arithExpOk : scope * ArithExp
+
+  arithExpOk(_, Int2ArithExp(_)).
+
+  arithExpOk(_, Var2ArithExp(Wld())).
+  arithExpOk(s, Var2ArithExp(Var(var))) :-
+    typeOfVariable(s, var) == INT().
+
+  arithExpOk(s, AAdd(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, AMul(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, ASub(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, AMin(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, AMax(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, AMod(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).
+
+  arithExpOk(s, ADiv(e1, e2)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2).

@@ -1,0 +1,184 @@
+module statix/lang/statics/util
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+
+signature
+  sorts
+    LType
+
+  constructors
+    EDGE        : LType
+    RELATION    : IType -> LType
+
+  relations
+    mod         :   ModuleId -> scope
+    predicate   :   ConstraintId -> IType
+    var         :   VARID -> TType
+    sort        :   SortId -> TType
+    cons        :   OpId * int -> (list(TType) * TType)
+    label       :   RelationId -> LType
+
+  name-resolution
+    labels P
+
+// Working with Relations
+rules
+  // CONSTRAINTS
+  declareConstraint: scope * ConstraintId * IType
+  resolveConstraint: scope * ConstraintId -> list((path * (ConstraintId * IType)))
+  typeOfConstraint: scope * ConstraintId -> IType
+
+  declareConstraint(s, id, T) :-
+    !predicate[id, T] in s,
+    resolveConstraint(s, id) == [(_, (_, _))] | error $[Duplicate constraint [id]].
+
+  resolveConstraint(s, id) = ps :-
+    query predicate
+        filter P* and { x :- x == id }
+        in s |-> ps.
+
+  typeOfConstraint(s, id) = T :- {id'}
+    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined].
+
+  // VARIABLES
+  declareVariable: scope * VARID
+  declareVariables maps declareVariable(*, list(*))
+  resolveVariable: scope * VARID -> list((path * (VARID * TType)))
+  typeOfVariable: scope * VARID -> TType
+  typeOfVariables maps typeOfVariable(*, list(*)) = *
+
+  declareVariable(s, id) :- {T}
+     !var[id, T] in s,
+     resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].
+
+  resolveVariable(s, id) = ps :-
+    query var
+        filter P* and { x :- x == id }
+        min $ < P
+        in s |-> ps.
+
+  typeOfVariable(s, id) = T :- {id'}
+    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable [id] not defined].
+
+  // SORTS
+  declareSort: scope * SortId * TType
+  resolveSort: scope * SortId -> list((path * (SortId * TType)))
+  typeOfSort: scope * SortId -> TType
+
+  declareSort(s, id, T) :-
+    !sort[id, T] in s,
+    resolveSort(s, id) == [(_, (_, _))] | error $[Duplicate sort [id]].
+
+  resolveSort(s, id) = ps :-
+    query sort
+        filter P* and { x :- x == id }
+        in s |-> ps.
+
+  typeOfSort(s, id) = T :- {id'}
+    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined].
+
+  // CONSTRUCTORS
+  declareCons: scope * OpId * int * (list(TType) * TType)
+  resolveCons: scope * OpId * int -> list((path * (OpId * int * (list(TType) * TType))))
+  typeOfCons: scope * OpId * int -> (list(TType) * TType)
+
+  declareCons(s, id, arity, T) :-
+    !cons[id, arity, T] in s,
+    resolveCons(s, id, arity) == [(_, (_, _, _))] | error $[Duplicate constructor [id]/[arity]].
+
+  resolveCons(s, id, arity) = ps :-
+    query cons
+        filter P* and { (x, y) :- x == id, y == arity }
+        in s |-> ps.
+
+  typeOfCons(s, id, arity) = T :- {id' arity'}
+    resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
+
+  // RELATIONS OR LABELS
+  declareLabel: scope * RelationId * LType
+  resolveLabel: scope * RelationId -> list((path * (RelationId * LType)))
+  typeOfLabel: scope * RelationId -> LType
+
+  declareLabel(s, id, T) :-
+    !label[id, T] in s,
+    resolveLabel(s, id) == [(_, (_, _))] | error $[Duplicate label/relation [id]].
+
+  resolveLabel(s, id) = ps :-
+    query label
+        filter P* and { x :- x == id }
+        in s |-> ps.
+
+  typeOfLabel(s, id) = T :- {id'}
+    resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined].
+
+// Utility
+rules
+  sortRefListLength : list(SortRef) -> int
+
+  sortRefListLength([]) = 0.
+  sortRefListLength([_|tail]) = #(1 + sum) :-
+    sum == sortRefListLength(tail).
+
+  termLength : list(Term) -> int
+
+  termLength([]) = 0.
+  termLength([_|tail]) = #(1 + sum) :-
+    sum == termLength(tail).
+
+  concatStringList : list(string) * list(string) -> list(string)
+
+  concatStringList([], ys) = ys.
+  concatStringList([x|xs],ys) = [x|concatStringList(xs, ys)].
+
+  concatTTypeList : list(TType) * list(TType) -> list(TType)
+
+  concatTTypeList([], ys) = ys.
+  concatTTypeList([x|xs],ys) = [x|concatTTypeList(xs, ys)].
+
+  removeDuplicateVars : list(string) -> list(string)
+
+  removeDuplicateVars([]) = [].
+  removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
+    xs' == filterVars(xs, x).
+
+  filterVars : list(string) * string -> list(string)
+
+  filterVars([], _) = [].
+  filterVars([id|xs], id) = filterVars(xs, id).
+  filterVars([x|xs], f) = [x|filterVars(xs, f)].
+
+  varsToStringList : list(Var) -> list(string)
+
+  varsToStringList([]) = [].
+  varsToStringList([Wld()|xs]) = varsToStringList(xs).
+  varsToStringList([Var(x)|xs]) = [x|varsToStringList(xs)].
+
+  inType: IType -> TType
+
+  inType(PRED(TS)) = typesToType(TS).
+  inType(FUN(TS, _)) = typesToType(TS).
+
+  inOutType: IType -> TType
+
+  inOutType(PRED(TS)) = typesToType(TS).
+  inOutType(FUN(TS, RT)) = typesToType(concatTTypeList(TS, [RT])).
+
+  typesToType: list(TType) -> TType
+
+  typesToType([ty]) = ty.
+  typesToType(TS) = TUPLE(TS).
+
+rules
+  typeEq: TType * TType
+  typeListEq maps typeEq(list(*), list(*))
+
+  typeEq(LIST(T1), LIST(T2)) :-
+    typeEq(T1, T2).
+
+  typeEq(TUPLE(TS1), TUPLE(TS2)) :-
+    typeListEq(TS1, TS2).
+
+  typeEq(x, x).
+  typeEq(x, y) :- false.

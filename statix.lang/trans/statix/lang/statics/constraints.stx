@@ -1,0 +1,107 @@
+module statix/lang/statics/constraints
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/terms
+
+rules
+  constraintOk : scope * Constraint
+
+  constraintOk(_, CTrue()).
+
+  constraintOk(s, CFalse(m)) :-
+    messageOk(s, m).
+
+  constraintOk(s, CConj(l, r)) :-
+    constraintOk(s, l),
+    constraintOk(s, r).
+
+  constraintOk(s, CNew(vars)) :-
+    SCOPE() == typeOfVariables(s, varsToStringList(vars)).
+
+  constraintOk(s, CTellEdge(t1, Label(l), t2)) :-
+    SCOPE() == termOk(s, t1),
+    EDGE() == typeOfLabel(s, l),
+    SCOPE() == termOk(s, t2).
+
+  constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, m).
+
+  constraintOk(s, CInequal(l, r, m)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, m).
+
+  constraintOk(s, C(cid, ts, m)) :- {TS}
+    PRED(TS) == typeOfConstraint(s, cid) | error "Inline notation can only be used for non-functional constraints",
+    TS == termsOk(s, ts),
+    messageOk(s, m).
+
+  constraintOk(s, CExists(vars, c)) :- {s_exists}
+    new s_exists, s_exists -P-> s,
+    declareVariables(s_exists, varsToStringList(vars)),
+    constraintOk(s_exists, c).
+
+  constraintOk(s, CAstId(t1, t2)) :-
+    _ == termOk(s, t1),
+    AST_ID() == termOk(s, t2).
+
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
+    try { false } | warning "Assigning property to wildcard is counterintuitive",
+    _ == termOk(s, t).
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Var(var)), _, _, t)) :-
+    _ == typeOfVariable(s, var),
+    _ == termOk(s, t).
+
+  constraintOk(s, CArith(e1, _, e2, m)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2),
+    messageOk(s, m).
+
+rules
+  messageOk : scope * Message
+
+  messageOk(_, NoMessage()).
+  messageOk(s, Message(kind, content, origin)) :- {kindString}
+    kindString == kindToString(kind),
+    kind == Error() | error $[use 'try' for [kindString]],
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
+
+  tryMessageOk : scope * Message
+
+  tryMessageOk(_, NoMessage()).
+  tryMessageOk(s, Message(_, content, origin)) :-
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
+
+  messageContentOk : scope * MessageContent
+  messageContentOk(_, NoMessageContent()).
+  messageContentOk(_, Str2MessageContent(_)).
+
+  messageContentOk(_, Formatted(parts)).
+
+  messageContentPartOk : scope * MessageContentPart
+  messageContentPartsOk maps messageContentPartOk(*, list(*))
+
+  messageContentPartOk(_, Text(_)).
+  messageContentPartOk(s, Term(t)) :-
+    _ == termOk(s, t).
+
+  messageOriginOk : scope * MessageOrigin
+  messageOriginOk(_, NoOrigin()).
+  messageOriginOk(_, Origin(Wld())).
+
+  messageOriginOk(s, Origin(Var(var))) :-
+    _ == resolveVariable(s, var).
+
+  kindToString : MessageKind -> string
+
+  kindToString(Warning()) = "warnings".
+  kindToString(Note()) = "notes".
