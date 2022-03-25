@@ -18,62 +18,83 @@ rules
   termOk(_, Str2Term(a@Str(_))) = STRING() :-
     @a.type := STRING().
 
-  termOk(_, Var2Term(Wld())) = _.
-  termOk(s, Var2Term(Var(var))) = typeOfVariable(s, var).
+  termOk(_, Var2Term(a@Wld())) = T :-
+    @a.type := T.
+  termOk(s, Var2Term(a@Var(var))) = T :-
+    T == typeOfVariable(s, var),
+    @a.type := T.
 
-  termOk(s, List(xs)) = LIST(T) :-
-    T == listTermOk(s, xs).
+  termOk(s, a@List(xs)) = LIST(T) :-
+    T == listTermOk(s, xs),
+    @a.type := LIST(T).
 
-  termOk(s, ListTail(hs, tail)) = LIST(T) :-
+  termOk(s, a@ListTail(hs, tail)) = LIST(T) :-
     T == listTermOk(s, hs),
-    LIST(T) == termOk(s, tail).
+    LIST(T) == termOk(s, tail),
+    @a.type := LIST(T).
 
-  termOk(s, Tuple(t)) = TUPLE(TS) :-
-    TS == termsOk(s, t).
+  termOk(s, a@Tuple(t)) = TUPLE(TS) :-
+    TS == termsOk(s, t),
+    @a.type := TUPLE(TS).
 
-  termOk(s, Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
+  termOk(s, a@Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
     len == termLength(ts),
     (CTS, T) == typeOfCons(s, id, len),
-    CTS == termsOk(s, ts).
+    CTS == termsOk(s, ts),
+    @a.type := T.
 
-  termOk(s, COp(cid, Terms2CommaTerms(ts))) = RT :- {ATS}
-    FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
-    ATS == termsOk(s, ts).
+  termOk(s, a@COp(cid, Terms2CommaTerms(ts))) = RT :- {TS}
+    FUN(TS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
+    TS == termsOk(s, ts),
+    @a.type := RT.
 
-  termOk(s, As(Wld(), term)) = termOk(s, term) :-
-    try { false } | warning "Ascribing to a wildcard is counterintuitive".
-  termOk(s, As(Var(var), term)) = T :-
-    T == typeOfVariable(s, var),
-    T == termOk(s, term).
-
-  termOk(s, Ascribe(term, ty)) = T :-
+  termOk(s, a@As(w@Wld(), term)) = T :-
     T == termOk(s, term),
-    T == sortRefToType(s, ty).
+    @a.type := T,
+    @w.type := T,
+    try { false } | warning "Ascribing to a wildcard is counterintuitive".
+  termOk(s, a@As(v@Var(var), term)) = T :-
+    T == typeOfVariable(s, var),
+    T == termOk(s, term),
+    @a.type := T,
+    @v.type := T.
 
-  termOk(_, NewOp()) = SCOPE().
+  termOk(s, a@Ascribe(term, ty)) = T :-
+    T == termOk(s, term),
+    T == sortRefToType(s, ty),
+    @a.type := T.
 
-  termOk(s, AstIdOp(t)) = AST_ID() :-
-    _ == termOk(s, t).
+  termOk(_, a@NewOp()) = SCOPE() :-
+    @a.type := SCOPE().
 
-  termOk(s, Path2Term(PathLit2Path(PathEmpty(st)))) = PATH() :-
-    SCOPE() == termOk(s, st).
+  termOk(s, a@AstIdOp(t)) = AST_ID() :-
+    _ == termOk(s, t),
+    @a.type := AST_ID().
 
-  termOk(s, Path2Term(PathLit2Path(PathStep(pt, lt, st)))) = PATH() :-
+  termOk(s, Path2Term(PathLit2Path(a@PathEmpty(st)))) = PATH() :-
+    SCOPE() == termOk(s, st),
+    @a.type := PATH().
+
+  termOk(s, Path2Term(PathLit2Path(a@PathStep(pt, lt, st)))) = PATH() :-
     PATH() == termOk(s, pt),
     LABEL() == termOk(s, lt),
-    SCOPE() == termOk(s, st).
+    SCOPE() == termOk(s, st),
+    @a.type := PATH().
 
-  termOk(s, ArithOp(aExp)) = INT() :-
-    arithExpOk(s, aExp).
+  termOk(s, a@ArithOp(aExp)) = INT() :-
+    arithExpOk(s, aExp),
+    @a.type := INT().
 
 rules
   arithExpOk : scope * ArithExp
 
   arithExpOk(_, Int2ArithExp(_)).
 
-  arithExpOk(_, Var2ArithExp(Wld())).
-  arithExpOk(s, Var2ArithExp(Var(var))) :-
-    typeOfVariable(s, var) == INT().
+  arithExpOk(_, Var2ArithExp(a@Wld())) :-
+    @a.type := INT().
+  arithExpOk(s, Var2ArithExp(a@Var(var))) :-
+    typeOfVariable(s, var) == INT(),
+    @a.type := INT().
 
   arithExpOk(s, AAdd(e1, e2)) :-
     arithExpOk(s, e1),

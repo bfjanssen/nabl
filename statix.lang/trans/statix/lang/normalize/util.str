@@ -19,6 +19,7 @@ imports
 signature
   constructors
     StxType : Term -> Annotation
+    NaBL2Type : Term -> Annotation
     OfSort : Term -> Annotation
     PRED : list(Term) -> Term
     FUN : list(Term) * Term -> Term
@@ -43,6 +44,16 @@ rules
     where
         tys' := <map(clean-annotations)> tys;
         rty' := <clean-annotations> rty
+
+  clean-annotations:
+    LIST(ty) -> <remove-annotations(?OfSort(_))> LIST(ty')
+    where
+        ty' := <clean-annotations> ty
+
+  clean-annotations:
+    TUPLE(tys) -> <remove-annotations(?OfSort(_))> TUPLE(tys')
+    where
+        tys' := <map(clean-annotations)> tys
 
   clean-annotations = remove-annotations(?OfSort(_))
 
@@ -77,12 +88,19 @@ rules
 
 rules
 
-  norm-get-ast-type =
-    stx-get-anno-type
- <+ fail-warn-msg(|"Missing AST type")
+  norm-get-ast-type: a -> ty
+    with if <get-annotation(?NaBL2Type(<id>))> a then
+        ty := <nabl2-get-anno-type> a
+    else
+        ty := <stx-get-anno-type> a
+    end
 
-  norm-set-ast-type(|ty) =
-    stx-set-anno-type(|ty)
+  norm-set-ast-type(|ty): a -> a*
+    with if <get-annotation(?NaBL2Type(<id>))> a then
+        a* := <nabl2-set-anno-type(|ty)> a
+    else
+        a* := <stx-set-anno-type(|ty)> a
+    end
 
   norm-copy-ast-type(|t) =
     nabl2-copy-anno-type(|t)
