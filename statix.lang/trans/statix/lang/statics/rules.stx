@@ -16,12 +16,14 @@ rules
   cDeclOk(s, CDecl(_, id, a@SimpleType(tys))) :- {TS}
     TS == sortRefsToTypes(s, tys),
     declareConstraint(s, id, PRED(TS)),
+    setCKind(s, id, DeclaredC()),
     @a.type := PRED(TS).
 
   cDeclOk(s, CDecl(_, id, a@FunType(tys, rtty))) :- {TS RT}
     TS == sortRefsToTypes(s, tys),
     RT == sortRefToType(s, rtty),
     declareConstraint(s, id, FUN(TS, RT)),
+    setCKind(s, id, DeclaredC()),
     @a.type := FUN(TS, RT).
 
 rules
@@ -37,12 +39,14 @@ rules
 
   ruleHeadOk(s, a@C(id, args)) :- {TS vars}
     PRED(TS) == typeOfConstraint(s, id),
+    DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
     vars == removeDuplicateVars(patternsOk(s, TS, args)),
     declareVariables(s, vars),
     @a.type := PRED(TS).
 
   ruleHeadOk(s, a@F(id, args, result)) :- {ATS RT vs1 vs2 vars}
     FUN(ATS, RT) == typeOfConstraint(s, id),
+    DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
     vs1 == patternsOk(s, ATS, args),
     vs2 == patternOk(s, RT, result),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
@@ -191,14 +195,16 @@ rules
     PRED(TS) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) = ... for functional constraints.],
     (LTS, num) == liftsToTypes(lifts, TS),
     num #> 0 | error "At least one argument must be lifted.",
-    declareConstraint(s, id, PRED(LTS)).
+    declareConstraint(s, id, PRED(LTS)),
+    setCKind(s, id, DerivedC()).
 
   cDeriveOk(s, FDeriveMap(id, mid, lifts, outLift)) :- {TS RT LTS LRT num}
     FUN(TS, RT) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) for non-functional constraints.],
     (LTS, num) == liftsToTypes(lifts, TS),
     num #> 0 | error "At least one argument must be lifted.",
     (LRT, _) == liftToType(outLift, RT),
-    declareConstraint(s, id, FUN(LTS, LRT)).
+    declareConstraint(s, id, FUN(LTS, LRT)),
+    setCKind(s, id, DerivedC()).
 
   liftToType: Lift * TType -> (TType * int)
 

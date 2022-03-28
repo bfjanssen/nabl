@@ -7,10 +7,14 @@ imports
 signature
   sorts
     LType
+    CKind
 
   constructors
     EDGE        : LType
     RELATION    : IType -> LType
+
+    DeclaredC : CKind
+    DerivedC  : CKind
 
   relations
     mod         :   ModuleId -> scope
@@ -19,6 +23,8 @@ signature
     sort        :   SortId -> TType
     cons        :   OpId * int -> (list(TType) * TType)
     label       :   RelationId -> LType
+
+    cKind        :   ConstraintId -> CKind
 
   name-resolution
     labels P
@@ -112,6 +118,22 @@ rules
 
   typeOfLabel(s, id) = T :- {id'}
     resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined].
+
+  // KIND OF CONSTRAINTS
+  setCKind: scope * ConstraintId * CKind
+  resolveCKind: scope * ConstraintId -> list((path * (ConstraintId * CKind)))
+  getCKind: scope * ConstraintId -> CKind
+
+  setCKind(s, id, kind) :-
+    !cKind[id, kind] in s.
+
+  resolveCKind(s, id) = ps :-
+    query cKind
+        filter P* and { x :- x == id }
+        in s |-> ps.
+
+  getCKind(s, id) = kind :- {id'}
+    resolveCKind(s, id) == [(_, (id', kind))|_].
 
 // Utility
 rules
