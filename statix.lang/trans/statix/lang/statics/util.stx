@@ -27,10 +27,27 @@ signature
     cKind        :   ConstraintId -> CKind
 
   name-resolution
-    labels P
+    labels P I
 
 // Working with Relations
 rules
+  // MODULES
+  declareModule: scope * ModuleId * scope
+  resolveModule: scope * ModuleId -> list((path * (ModuleId * scope)))
+  scopeOfModule: scope * ModuleId -> scope
+
+  declareModule(s, id, s_mod) :-
+    !mod[id, s_mod] in s,
+    resolveModule(s, id) == [(_, (_, _))] | error $[Duplicate module [id]].
+
+  resolveModule(s, id) = ps :-
+    query mod
+      filter P* and { x :- x == id }
+      in s |-> ps.
+
+  scopeOfModule(s, id) = s_mod :- {id'}
+    resolveModule(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]].
+
   // CONSTRAINTS
   declareConstraint: scope * ConstraintId * IType
   resolveConstraint: scope * ConstraintId -> list((path * (ConstraintId * IType)))
@@ -42,7 +59,7 @@ rules
 
   resolveConstraint(s, id) = ps :-
     query predicate
-        filter P* and { x :- x == id }
+        filter P*I* and { x :- x == id }
         in s |-> ps.
 
   typeOfConstraint(s, id) = T :- {id'}
@@ -79,7 +96,7 @@ rules
 
   resolveSort(s, id) = ps :-
     query sort
-        filter P* and { x :- x == id }
+        filter P*I* and { x :- x == id }
         in s |-> ps.
 
   typeOfSort(s, id) = T :- {id'}
@@ -96,7 +113,7 @@ rules
 
   resolveCons(s, id, arity) = ps :-
     query cons
-        filter P* and { (x, y) :- x == id, y == arity }
+        filter P*I* and { (x, y) :- x == id, y == arity }
         in s |-> ps.
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
@@ -113,7 +130,7 @@ rules
 
   resolveLabel(s, id) = ps :-
     query label
-        filter P* and { x :- x == id }
+        filter P*I? and { x :- x == id }
         in s |-> ps.
 
   typeOfLabel(s, id) = T :- {id'}
@@ -129,7 +146,7 @@ rules
 
   resolveCKind(s, id) = ps :-
     query cKind
-        filter P* and { x :- x == id }
+        filter P*I* and { x :- x == id }
         in s |-> ps.
 
   getCKind(s, id) = kind :- {id'}

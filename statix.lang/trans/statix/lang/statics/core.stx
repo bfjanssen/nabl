@@ -28,8 +28,9 @@ rules
 
   moduleOk: scope * Module
 
-  moduleOk(s, Module(_, sections)) :- {s_mod}
+  moduleOk(s, Module(id, sections)) :- {s_mod}
     new s_mod, s_mod -P-> s,
+    declareModule(s, id, s_mod),
     sectionsOk(s_mod, sections).
 
   testOk: scope * Test
@@ -49,6 +50,9 @@ rules
   sectionOk(s, Rules(rules)) :-
     rulesOk(s, rules).
 
+  sectionOk(s, Imports(imports)) :-
+    importsOk(s, imports).
+
 rules
   signatureOk: scope * Signature
   signaturesOk maps signatureOk(*, list(*))
@@ -67,3 +71,11 @@ rules
 
   signatureOk(s, Constructors(opdecls)) :-
     opDeclsOk(s, opdecls).
+
+rules
+  importOk: scope * Import
+  importsOk maps importOk(*, list(*))
+
+  importOk(s, Import(id)) :- {s_import}
+    s_import == scopeOfModule(s, id),
+    s -I-> s_import.
