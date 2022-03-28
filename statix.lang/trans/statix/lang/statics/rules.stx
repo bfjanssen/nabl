@@ -196,7 +196,9 @@ rules
     (LTS, num) == liftsToTypes(lifts, TS),
     num #> 0 | error "At least one argument must be lifted.",
     declareConstraint(s, id, PRED(LTS)),
-    setCKind(s, id, DerivedC()).
+    setCKind(s, id, DerivedC()),
+    @id.type := PRED(LTS),
+    @mid.type := PRED(TS).
 
   cDeriveOk(s, FDeriveMap(id, mid, lifts, outLift)) :- {TS RT LTS LRT num}
     FUN(TS, RT) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) for non-functional constraints.],
@@ -204,7 +206,9 @@ rules
     num #> 0 | error "At least one argument must be lifted.",
     (LRT, _) == liftToType(outLift, RT),
     declareConstraint(s, id, FUN(LTS, LRT)),
-    setCKind(s, id, DerivedC()).
+    setCKind(s, id, DerivedC()),
+    @id.type := FUN(LTS, LRT),
+    @mid.type := FUN(TS, RT).
 
   liftToType: Lift * TType -> (TType * int)
 

@@ -13,6 +13,7 @@ imports
 rules
   normalize(|a) =
     stx-add-anno-types(|a)
+  ; normalize-mapping-constraints
   ; normalize-functional-constraints
   ; normalize-ho-constraints
   ; normalize-functional-relations
@@ -22,7 +23,7 @@ rules
   normalize-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"Normalizing AST...")
   ; normalize-add-anno-types(|a)
-  ; normalize-mapping-constraints(|a)
+  ; normalize-mapping-constraints-legacy(|a)
   ; normalize-functional-constraints-legacy
   ; normalize-ho-constraints-legacy
   ; normalize-resolves(|a)

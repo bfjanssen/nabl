@@ -17,21 +17,35 @@ rules
 
   // replace functional and predicate maps to explicit constraints and rules
 
-  normalize-mapping-constraints(|a) =
+  normalize-mapping-constraints-legacy(|a) =
     nabl2-custom-analysis-info-msg(|"| Normalize mapping constraints...")
-  ; normalize-in-sections(replace-map(|a))
+  ; normalize-in-sections(replace-map-legacy(|a))
 
+  normalize-mapping-constraints =
+    normalize-in-sections(replace-map)
 
-  replace-map(|a): CDeriveMap(x, y, lift*) -> rule*
-    with ty@PRED(tys) := <norm-get-ast-decl-type(|a)> x;
+  replace-map: CDeriveMap(x, y, lift*) -> rule*
+    with ty@PRED(tys) := <norm-get-ast-type> x;
          ty_lift*     := <zip> (tys, lift*);
-         decl         := <cmap-decl(|a)> x;
+         decl         := <cmap-decl(|ty)> x;
          base-rule    := <cmap-base-rule(|ty)> (x, y, ty_lift*);
          elem-rule    := <cmap-elem-rule(|ty)> (x, y, ty_lift*);
          rule*        := [decl, base-rule, elem-rule]
       <+ rule* := []
 
-  cmap-decl(|a): x -> CDecl(ind, x, sort)
+  replace-map-legacy(|a): CDeriveMap(x, y, lift*) -> rule*
+    with ty@PRED(tys) := <norm-get-ast-decl-type(|a)> x;
+         ty_lift*     := <zip> (tys, lift*);
+         decl         := <cmap-decl-legacy(|a)> x;
+         base-rule    := <cmap-base-rule(|ty)> (x, y, ty_lift*);
+         elem-rule    := <cmap-elem-rule(|ty)> (x, y, ty_lift*);
+         rule*        := [decl, base-rule, elem-rule]
+      <+ rule* := []
+
+  cmap-decl(|ty): x -> CDecl(InductiveC(), x, sort)
+    where sort := <type-to-sort;norm-set-ast-type(|ty)> ty
+
+  cmap-decl-legacy(|a): x -> CDecl(ind, x, sort)
     where ind  := <norm-get-ast-decl-property(|a,"ind")> x;
           ty   := <norm-get-ast-decl-type(|a)> x;
           sort := <type-to-sort;norm-set-ast-type(|ty)> ty
@@ -47,18 +61,32 @@ rules
           h    := <norm-set-ast-type(|ty)> C(x, ps)
 
 
-  replace-map(|a): FDeriveMap(x, y, in-lift*, out-lift) -> rule*
-    with ty@FUN(intys, outty) := <norm-get-ast-decl-type(|a)> x;
-         FUN(_, elem_outty)   := <norm-get-ast-decl-type(|a)> y;
+  replace-map: FDeriveMap(x, y, in-lift*, out-lift) -> rule*
+    with ty@FUN(intys, outty) := <norm-get-ast-type> x;
+         FUN(_, elem_outty)   := <norm-get-ast-type> y;
          in-ty_lift*          := <zip> (intys, in-lift*);
          out-ty_lift          := (outty, out-lift);
-         decl                 := <fmap-decl(|a)> x;
+         decl                 := <fmap-decl(|ty)> x;
          base-rule            := <fmap-base-rule(|ty, elem_outty)> (x, y, in-ty_lift*, out-ty_lift);
          elem-rule            := <fmap-elem-rule(|ty, elem_outty)> (x, y, in-ty_lift*, out-ty_lift);
          rule*                := [decl, base-rule, elem-rule]
       <+ rule* := []
 
-  fmap-decl(|a): x -> CDecl(ind, x, sort)
+  replace-map-legacy(|a): FDeriveMap(x, y, in-lift*, out-lift) -> rule*
+    with ty@FUN(intys, outty) := <norm-get-ast-decl-type(|a)> x;
+         FUN(_, elem_outty)   := <norm-get-ast-decl-type(|a)> y;
+         in-ty_lift*          := <zip> (intys, in-lift*);
+         out-ty_lift          := (outty, out-lift);
+         decl                 := <fmap-decl-legacy(|a)> x;
+         base-rule            := <fmap-base-rule(|ty, elem_outty)> (x, y, in-ty_lift*, out-ty_lift);
+         elem-rule            := <fmap-elem-rule(|ty, elem_outty)> (x, y, in-ty_lift*, out-ty_lift);
+         rule*                := [decl, base-rule, elem-rule]
+      <+ rule* := []
+
+  fmap-decl(|ty): x -> CDecl(InductiveC(), x, sort)
+    where sort := <type-to-sort;norm-set-ast-type(|ty)> ty
+
+  fmap-decl-legacy(|a): x -> CDecl(ind, x, sort)
     where ind  := <norm-get-ast-decl-property(|a,"ind")> x;
           ty   := <norm-get-ast-decl-type(|a)> x;
           sort := <type-to-sort;norm-set-ast-type(|ty)> ty
