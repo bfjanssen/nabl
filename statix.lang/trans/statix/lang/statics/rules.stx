@@ -180,3 +180,36 @@ rules
   listPatternOk(s, T, [x|xs]) = concatStringList(vs1, vs2) :-
     vs1 == patternOk(s, T, x),
     vs2 == listPatternOk(s, T, xs).
+
+rules
+  cDeclOk(s, CDerive2CDecl(cd)) :-
+    cDeriveOk(s, cd).
+
+  cDeriveOk: scope * CDerive
+
+  cDeriveOk(s, CDeriveMap(id, mid, lifts)) :- {TS LTS num}
+    PRED(TS) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) = ... for functional constraints.],
+    (LTS, num) == liftsToTypes(lifts, TS),
+    num #> 0 | error "At least one argument must be lifted.",
+    declareConstraint(s, id, PRED(LTS)).
+
+  cDeriveOk(s, FDeriveMap(id, mid, lifts, outLift)) :- {TS RT LTS LRT num}
+    FUN(TS, RT) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) for non-functional constraints.],
+    (LTS, num) == liftsToTypes(lifts, TS),
+    num #> 0 | error "At least one argument must be lifted.",
+    (LRT, _) == liftToType(outLift, RT),
+    declareConstraint(s, id, FUN(LTS, LRT)).
+
+  liftToType: Lift * TType -> (TType * int)
+
+  liftToType(IdLift(), T) = (T, 0).
+  liftToType(ListLift(), T) = (LIST(T), 1).
+  liftToType(TupleLift(ls), TUPLE(TS)) = (TUPLE(LTS), num) :-
+    (LTS, num) == liftsToTypes(ls, TS).
+
+  liftsToTypes: list(Lift) * list(TType) -> (list(TType) * int)
+
+  liftsToTypes([], []) = ([], 0).
+  liftsToTypes([l|ls], [T|TS]) = ([LT|LTS], #(num1 + num2)) :-
+    (LT, num1) == liftToType(l, T),
+    (LTS, num2) == liftsToTypes(ls, TS).
