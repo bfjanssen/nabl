@@ -12,12 +12,12 @@ signature
     STR = string
     ArithExp
     StrExp
-        
+
  constructors
     Plus : INT * INT -> ArithExp
-    Concat : STR * STR -> StrExp 
- 
-[[...]] 
+    Concat : STR * STR -> StrExp
+
+[[...]]
 ]]
 
 //Duplicates
@@ -55,9 +55,30 @@ test wrong constructor to sort match [[
     plus(Concat("4", "4")) = 8.
 ]] analysis fails
 
-//TODO FIX THIS ERROR MESSAGE LOCATION PROBLEM
-//test wrong type inside constructor [[
-//  rules
-//    plus: ArithExp -> int
-//    plus(Plus(4, "4")) = 8.
-//]] analysis fails
+test wrong type inside constructor [[
+  rules
+    plus: ArithExp -> int
+    plus(Plus(4, "4")) = 8.
+]] analysis fails
+
+test can't construct to a sort alias [[
+  signature
+    constructors
+        Number: INT
+]] analysis fails
+
+test can't construct to a sort alias functional [[
+  signature
+    constructors
+        STR2INT: STR -> INT
+]] analysis fails
+
+test transitive aliasing succeeds [[
+  signature
+    sorts
+        STR2 = STR
+
+  rules
+  strRule: STR2
+  strRule("hi").
+]] analysis succeeds
