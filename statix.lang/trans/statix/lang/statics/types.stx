@@ -49,10 +49,10 @@ rules
   opDeclsOk maps opDeclOk(*, list(*))
 
   opDeclOk(s, OpDecl(id, ConstOp(SimpleSort(sid)))) :-
-    SORT(sid) == typeOfSort(s,sid),
+    SORT(sid) == typeOfSort(s,sid) | error $[Can't define constructor for sort alias [sid]] ,
     declareCons(s, id, 0, ([], SORT(sid))).
 
   opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :- {len}
     len == sortRefListLength(refs),
-    SORT(sid) == typeOfSort(s, sid),
+    SORT(sid) == typeOfSort(s, sid) | error $[Can't define constructor for sort alias [sid]],
     declareCons(s, id, len, (sortRefsToTypes(s, refs), SORT(sid))).

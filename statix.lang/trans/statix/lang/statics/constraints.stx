@@ -43,6 +43,11 @@ rules
     TS == termsOk(s, ts),
     messageOk(s, m).
 
+  constraintOk(s, CTry(c, m)) :- {s_try}
+    new s_try, s_try -P-> s,
+    constraintOk(s_try, c),
+    tryMessageOk(s, m).
+
   constraintOk(s, CExists(vars, c)) :- {s_exists}
     new s_exists, s_exists -P-> s,
     declareVariables(s_exists, varsToStringList(vars)),
@@ -86,7 +91,8 @@ rules
   messageContentOk(_, NoMessageContent()).
   messageContentOk(_, Str2MessageContent(_)).
 
-  messageContentOk(_, Formatted(parts)).
+  messageContentOk(s, Formatted(parts)) :-
+    messageContentPartsOk(s, parts).
 
   messageContentPartOk : scope * MessageContentPart
   messageContentPartsOk maps messageContentPartOk(*, list(*))
@@ -100,9 +106,10 @@ rules
   messageOriginOk(_, Origin(Wld())).
 
   messageOriginOk(s, Origin(Var(var))) :-
-    _ == resolveVariable(s, var).
+    _ == typeOfVariable(s, var).
 
   kindToString : MessageKind -> string
 
   kindToString(Warning()) = "warnings".
   kindToString(Note()) = "notes".
+  kindToString(Error()) = "error".
