@@ -76,11 +76,11 @@ rules // Normalization Legacy
   format-normalized-legacy: (_, _, _, path, project-path) -> (filename, result)
     where ast := <get-normalized-ast-legacy>
     with ext      := <get-extension> path;
-         filename := <guarantee-extension(|$[normalized.[ext]])> path;
-         result   := <rename-module(|"normalized");pp-Statix-string> ast
+         filename := <guarantee-extension(|$[normalized-legacy.[ext]])> path;
+         result   := <rename-module(|"normalized-legacy");pp-Statix-string> ast
 
   get-normalized-ast-legacy: (_, _, ast, path, project-path) -> ast'
-    where a := <nabl2-get-resource-analysis> $[[project-path]/[path]]
+    where a := <legacy-analyze> $[[project-path]/[path]]
     with ast' := <normalize-legacy(|a)> ast
 
 rules // Explicit signature rules

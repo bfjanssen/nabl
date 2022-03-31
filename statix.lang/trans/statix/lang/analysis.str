@@ -4,6 +4,8 @@ imports
 
   libspoofax/analysis/constraint
   libspoofax/sdf/pp
+  libspoofax/core/parse
+  libspoofax/resource/path
 
   nabl2shared
   nabl2/shared/ast // for index-ast
@@ -22,7 +24,7 @@ imports
 
   pp/statix/lang/-
   pp
-  
+
   injections/-
   injections/statix/lang/NoParse-injections
   libspoofax/term/origin
@@ -38,7 +40,18 @@ rules // Analysis
   pre-analyze  = origin-track-forced(explicate-injections-Statix-Start)
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
-  //editor-analyze = nabl2-analyze(desugar-all)
+  legacy-analyze: path -> result
+  with path* := <current-language-source-and-include-files>
+       ; <debug> path
+       ; <language; debug> path
+       ; <language-source-files; debug> "StatixLang"
+       ; <debug> path*
+       ; file* := <map(Dupl; (id, parse-file))> path*
+       ; <debug> file*
+       ; prj   := (".", Added(()))
+       ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
+       ; <debug> results
+       ; result := <getfirst(?(path, Full(_, <id>, _, _, _)))> results
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
