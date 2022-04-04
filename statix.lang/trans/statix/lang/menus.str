@@ -79,8 +79,8 @@ rules // Normalization Legacy
          filename := <guarantee-extension(|$[normalized-legacy.[ext]])> path;
          result   := <rename-module(|"normalized-legacy");pp-Statix-string> ast
 
-  get-normalized-ast-legacy: (_, _, ast, path, project-path) -> ast'
-    where a := <legacy-analyze> $[[project-path]/[path]]
+  get-normalized-ast-legacy: (_, _, _, path, project-path) -> ast'
+    where (ast, a) := <legacy-analyze> $[[project-path]/[path]]
     with ast' := <normalize-legacy(|a)> ast
 
 rules // Explicit signature rules

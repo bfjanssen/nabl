@@ -12,3 +12,5 @@ runtime:
 sources:
 - language: StatixLang
   directory: src
+- language: Statix2Lang
+  directory: src

@@ -11,7 +11,7 @@ imports
   nabl2/shared/ast // for index-ast
   nabl2runtime
   nabl2/api
-  nabl2/runtime/analysis/main
+  nabl2/runtime/analysis/-
 
   signatures/statix/lang/-
 
@@ -40,18 +40,13 @@ rules // Analysis
   pre-analyze  = origin-track-forced(explicate-injections-Statix-Start)
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
-  legacy-analyze: path -> result
+  legacy-analyze: path -> (ast, analysis)
   with path* := <current-language-source-and-include-files>
-       ; <debug> path
-       ; <language; debug> path
-       ; <language-source-files; debug> "StatixLang"
-       ; <debug> path*
-       ; file* := <map(Dupl; (id, parse-file))> path*
-       ; <debug> file*
+       ; file* := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
-       ; <debug> results
-       ; result := <getfirst(?(path, Full(_, <id>, _, _, _)))> results
+       ; ast := <getfirst(?(path, Full(<id>, _, _, _, _)))> results
+       ; analysis := <getfirst(?(path, Full(_, CompatUnitAnalysis(_, <id>), _, _, _)))> results
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)

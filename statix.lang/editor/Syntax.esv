@@ -36,8 +36,8 @@ menus
     action: "Show normalized AST" = show-normalized-aterm
     action: "Format normalized AST" = format-normalized
 
-    action: "Show normalized AST (legacy)"   = show-normalized-aterm-legacy
-    action: "Format normalized AST (legacy)" = format-normalized-legacy
+    action: "Show normalized AST (legacy)"   = show-normalized-aterm-legacy (source)
+    action: "Format normalized AST (legacy)" = format-normalized-legacy (source)
 
     separator
 
