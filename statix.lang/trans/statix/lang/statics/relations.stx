@@ -75,6 +75,7 @@ rules
     labelRegExOk(s, lre1),
     labelRegExOk(s, lre2).
 
+rules
   hoConstraintOk: scope * HoConstraint * list(TType)
 
   hoConstraintOk(_, a@LTrue(), TS) :-
