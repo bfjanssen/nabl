@@ -113,6 +113,12 @@ test duplicate variable incorrect type match [[
   rule(x, x).
 ]] analysis fails
 
+test name shadowing of variable gives a warning [[
+  rule: int
+  rule(x) :- {[[x]]} x == "hi".
+]] analysis succeeds
+   1 warning at #1
+
 // Duplicates & missing declarations
 test duplicate rulename [[
    rule: int * int
