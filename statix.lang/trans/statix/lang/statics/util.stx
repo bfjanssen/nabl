@@ -55,7 +55,13 @@ rules
 
   declareConstraint(s, id, T) :-
     !predicate[id, T] in s,
-    resolveConstraint(s, id) == [(_, (_, _))] | error $[Duplicate constraint [id]].
+    query predicate
+        filter e and { x :- x == id }
+        in s |-> [(_, (_, _))] | error $[Duplicate constraint [id]],
+    try { query predicate
+            filter I+ and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing imported constraint [id]].
 
   resolveConstraint(s, id) = ps :-
     query predicate
@@ -74,7 +80,13 @@ rules
 
   declareVariable(s, id) :- {T}
      !var[id, T] in s,
-     resolveVariable(s, id) == [(_, (_, _))] | error $[Duplicate variable of type [T]].
+     query var
+        filter e and { x :- x == id }
+        in s |-> [(_, (_, _))] | error $[Duplicate variable [id]],
+    try { query var
+            filter P+ and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing variable [id]].
 
   resolveVariable(s, id) = ps :-
     query var
@@ -126,7 +138,13 @@ rules
 
   declareLabel(s, id, T) :-
     !label[id, T] in s,
-    resolveLabel(s, id) == [(_, (_, _))] | error $[Duplicate label/relation [id]].
+    query label
+        filter e and { x :- x == id }
+        in s |-> [(_, (_, _))] | error $[Duplicate label/relation [id]],
+    try { query label
+            filter I and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing imported label/relation [id]].
 
   resolveLabel(s, id) = ps :-
     query label
