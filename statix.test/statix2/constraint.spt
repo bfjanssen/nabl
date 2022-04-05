@@ -143,6 +143,18 @@ test unknown variable ast property constraint [[
   resolve @x.type := _
 ]] analysis fails
 
+test correct arithmetic constraint [[
+  resolve 8 #< 9
+]] analysis succeeds
+
+test incorrect type arithmetic constraint [[
+  resolve {x} x == "9", 8 #< x
+]] analysis fails
+
+test undefined variable arithmetic constraint [[
+  resolve x #< 9
+]] analysis fails
+
 test arithmetic constraint faling message [[
   resolve 8 #< 9 | error $["Variable [x] doesn't exist"]
 ]] analysis fails

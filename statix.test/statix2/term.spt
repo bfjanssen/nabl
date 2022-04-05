@@ -106,3 +106,11 @@ test third argument of path Step has to be scope type [[
 test arithmetic term is of type int [[
   resolve #(1+1) == 2
 ]] analysis succeeds
+
+test arithmetic term with incorrect inner typing fails [[
+  resolve {x} x == "1", #(2-x) == _
+]] analysis fails
+
+test arithmetic term with unresolved variable fails [[
+  resolve #(2-x) == _
+]] analysis fails
