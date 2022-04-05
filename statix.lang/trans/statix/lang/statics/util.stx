@@ -67,6 +67,7 @@ rules
   resolveConstraint(s, id) = ps :-
     query predicate
         filter P*I* and { x :- x == id }
+        min $ < I
         in s |-> ps.
 
   typeOfConstraint(s, id) = T :- {id'}
@@ -195,6 +196,7 @@ rules
   resolveLabel(s, id) = ps :-
     query label
         filter P*I? and { x :- x == id }
+        min $ < I
         in s |-> ps.
 
   typeOfLabel(s, id) = T :- {id'}
