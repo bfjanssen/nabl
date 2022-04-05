@@ -1,0 +1,76 @@
+module statix2/mapping
+
+language Statix2Lang
+
+fixture [[
+module test
+
+rules
+  [[...]]
+]]
+
+test correct mapping instance [[
+  rule: string * int
+  mapped maps rule(*, list(*))
+
+  rule(x, 8) :- mapped(x, [8, 0]).
+]] analysis succeeds
+
+test incorrect mapped typing [[
+  rule: string * int
+  mapped maps rule(*, list(*))
+
+  rule(x, y) :- mapped(x, y).
+]] analysis fails
+
+test incorrect number of lifts [[
+  rule: string * int
+  mapped maps rule(list(*))
+]] analysis fails
+
+test no list lifts fails [[
+  rule: string * int
+  mapped maps rule(*, *)
+]] analysis fails
+
+test correct tuple lift [[
+  rule: (string * int)
+  mapped maps rule((*, list(*)))
+
+  rule((x, 8)) :- mapped((x, [8, 0])).
+]] analysis succeeds
+
+test can't define rule for mapped constraints [[
+  rule: string * int
+  mapped maps rule(*, list(*))
+
+  mapped("hi", [8]) :- true.
+]] analysis fails
+
+// Functional
+
+test correct functional mapping instance [[
+  rule: int -> int
+  mapped maps rule(list(*)) = list(*)
+
+  rule(8) = 8 :- [8] == mapped([8, 0]).
+]] analysis succeeds
+
+test incorrect functional mapped typing [[
+  rule: int -> int
+  mapped maps rule(list(*)) = list(*)
+
+  rule(8) = 8 :- 8 == mapped([8, 0]).
+]] analysis fails
+
+test no lifts in input while still a lift in output does fail [[
+  rule: int -> int
+  mapped maps rule(*) = list(*)
+]] analysis fails
+
+test can't define rule for functional mapped constraints [[
+  rule: int -> int
+  mapped maps rule(list(*)) = *
+
+  mapped([8, 9]) = 2 :- true.
+]] analysis fails
