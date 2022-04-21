@@ -8,6 +8,7 @@ imports
   statix/lang/statics/types
   statix/lang/statics/constraints
   statix/lang/statics/relations
+  statix/lang/statics/duplicate-patterns
 
 rules
   cDeclOk: scope * CDecl
@@ -32,25 +33,29 @@ rules
 
   ruleOk(s, Rule(_, head, cnstrnt)) :- {s_rule}
     new s_rule, s_rule -P-> s,
-    ruleHeadOk(s_rule, head),
+    ruleHeadOk(s_rule, head, s),
     constraintOk(s_rule, cnstrnt).
 
-  ruleHeadOk: scope * RuleHead
+  ruleHeadOk: scope * RuleHead * scope
 
-  ruleHeadOk(s, a@C(id, args)) :- {TS vars}
+  ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars}
     PRED(TS) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
     vars == removeDuplicateVars(patternsOk(s, TS, args)),
     declareVariables(s, vars),
+    declarePattern(s_mod, id, args),
+    noDuplicatePatterns(s_mod, id, args, a),
     @a.type := PRED(TS).
 
-  ruleHeadOk(s, a@F(id, args, result)) :- {ATS RT vs1 vs2 vars}
+  ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars}
     FUN(ATS, RT) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
     vs1 == patternsOk(s, ATS, args),
     vs2 == patternOk(s, RT, result),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
     declareVariables(s, vars),
+    declarePattern(s_mod, id, args),
+    noDuplicatePatterns(s_mod, id, args, a),
     @a.type := FUN(ATS, RT).
 
   ruleOk(s, CDecl2Rule(cd)) :-

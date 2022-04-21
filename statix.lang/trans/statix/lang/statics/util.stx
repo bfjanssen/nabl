@@ -24,7 +24,9 @@ signature
     cons        :   OpId * int -> (list(TType) * TType)
     label       :   RelationId -> LType
 
-    cKind        :   ConstraintId -> CKind
+    cKind       :   ConstraintId -> CKind
+
+    rulePattern :   ConstraintId -> list(Term)
 
   name-resolution
     labels P I
@@ -232,6 +234,19 @@ rules
   getCKind(s, id) = kind :- {id'}
     resolveCKind(s, id) == [(_, (id', kind))|_].
 
+  // RULE PATTERNS
+  declarePattern: scope * ConstraintId * list(Term)
+  resolvePatterns: scope * ConstraintId -> list((path * (ConstraintId * list(Term))))
+
+  declarePattern(s, id, pattern) :-
+    !rulePattern[id, pattern] in s.
+
+  resolvePatterns(s, id) = ps :-
+    query rulePattern
+        filter I* and { x :- x == id }
+        min $ < I
+        in s |-> ps.
+
 // Utility
 rules
   sortRefListLength : list(SortRef) -> int
@@ -245,6 +260,11 @@ rules
   termLength([]) = 0.
   termLength([_|tail]) = #(1 + sum) :-
     sum == termLength(tail).
+
+  concatTermList : list(Term) * list(Term) -> list(Term)
+
+  concatTermList([], ys) = ys.
+  concatTermList([x|xs],ys) = [x|concatTermList(xs, ys)].
 
   concatStringList : list(string) * list(string) -> list(string)
 
@@ -288,6 +308,17 @@ rules
 
   typesToType([ty]) = ty.
   typesToType(TS) = TUPLE(TS).
+
+  flattenListTail : Term -> Term
+
+  flattenListTail(ListTail(hs, List(tail))) = List(concatTermList(hs, tail)).
+  flattenListTail(ListTail(hs1, ListTail(hs2, t))) = flattenListTail(ListTail(concatTermList(hs1, hs2), t)).
+  flattenListTail(t) = t.
+
+  endOfPathScope : path -> scope
+
+  endOfPathScope(_PathEmpty(s)) = s.
+  endOfPathScope(_PathStep(p, _, _)) = endOfPathScope(p).
 
 rules
   typeEq: TType * TType
