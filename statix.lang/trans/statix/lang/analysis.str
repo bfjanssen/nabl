@@ -36,17 +36,16 @@ signature
 
 rules // Analysis
 
-  editor-analyze = stx-editor-analyze(desugar-all;pre-analyze, post-analyze|"statix/lang/statics/core", "projectOk", "fileOk")
-  pre-analyze  = origin-track-forced(explicate-injections-Statix-Start)
+  editor-analyze = stx-editor-analyze(pre-analyze, post-analyze|"statix/lang/statics/core", "projectOk", "fileOk")
+  pre-analyze  = desugar-all; origin-track-forced(explicate-injections-Statix-Start)
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
   legacy-analyze: path -> (ast, analysis)
-  with path* := <current-language-source-and-include-files>
+    with path* := <current-language-source-and-include-files>
        ; file* := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
-       ; ast := <getfirst(?(path, Full(<id>, _, _, _, _)))> results
-       ; analysis := <getfirst(?(path, Full(_, CompatUnitAnalysis(_, <id>), _, _, _)))> results
+       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, _))>
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)

@@ -20,15 +20,13 @@ sorts
 
 context-free syntax
 
-//  IType.PRED = [[TTypes]]
-//  IType.FUN  = [[TTypes] -> [TType]]
   IType.NS   = [[TTypes]]
   IType.OP   = [[TTypes] -> [TType]]
 
   TTypes = {TType " * "}*
 
-  IType.PRED = TType*
-  IType.FUN  = TType* TType
+  IType.PRED = [[TType*]]
+  IType.FUN  = [[TType*] -> [TType]]
 
   TType.SORT       = <<SortId>>
   TType.INT        = <int>

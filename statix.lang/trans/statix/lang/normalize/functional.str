@@ -16,7 +16,7 @@ imports
 rules
 
   // normalize functional constraints to predicate constraints
-  
+
   normalize-functional-constraints =
     normalize-in-sections(normalize-functional-cdecl)
   ; normalize-in-sections(normalize-functional-head)
