@@ -40,7 +40,7 @@ rules
 
   declareModule(s, id, s_mod) :-
     !mod[id, s_mod] in s,
-    resolveModule(s, id) == [(_, (_, _))] | error $[Duplicate module [id]].
+    resolveModule(s, id) == [_] | error $[Duplicate module [id]].
 
   resolveModule(s, id) = ps :-
     query mod
@@ -60,7 +60,7 @@ rules
     !predicate[id, T] in s,
     query predicate
         filter e and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate constraint [id]],
+        in s |-> [_] | error $[Duplicate constraint [id]],
     try { query predicate
             filter I+ and { x :- x == id }
             in s |-> []
@@ -87,7 +87,7 @@ rules
   isUniqueImportedConstraint(s, (_, (id, _))) :-
     query predicate
         filter I+ and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate imported constraint [id]].
+        in s |-> [_] | error $[Duplicate imported constraint [id]].
 
   // VARIABLES
   declareVariable: scope * VARID
@@ -100,7 +100,7 @@ rules
      !var[id, T] in s,
      query var
         filter e and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate variable [id]],
+        in s |-> [_] | error $[Duplicate variable [id]],
     try { query var
             filter P+ and { x :- x == id }
             in s |-> []
@@ -123,7 +123,7 @@ rules
 
   declareSort(s, id, T) :-
     !sort[id, T] in s,
-    resolveSort(s, id) == [(_, (_, _))] | error $[Duplicate sort [id]].
+    resolveSort(s, id) == [_] | error $[Duplicate sort [id]].
 
   resolveSort(s, id) = ps :-
     query sort
@@ -145,7 +145,7 @@ rules
   isUniqueImportedSort(s, (_, (id, _))) :-
     query sort
         filter I+ and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate imported sort [id]].
+        in s |-> [_] | error $[Duplicate imported sort [id]].
 
   // CONSTRUCTORS
   declareCons: scope * OpId * int * (list(TType) * TType)
@@ -155,7 +155,7 @@ rules
 
   declareCons(s, id, arity, T) :-
     !cons[id, arity, T] in s,
-    resolveCons(s, id, arity) == [(_, (_, _, _))] | error $[Duplicate constructor [id]/[arity]].
+    resolveCons(s, id, arity) == [_] | error $[Duplicate constructor [id]/[arity]].
 
   resolveCons(s, id, arity) = ps :-
     query cons
@@ -177,7 +177,7 @@ rules
   isUniqueImportedCons(s, (_, (id, arity, _))) :-
     query cons
         filter I+ and { (x, y) :- x == id, y == arity }
-        in s |-> [(_, (_, _, _))] | error $[Duplicate imported constructor [id]/[arity]].
+        in s |-> [_] | error $[Duplicate imported constructor [id]/[arity]].
 
   // RELATIONS OR LABELS
   declareLabel: scope * RelationId * LType
@@ -189,7 +189,7 @@ rules
     !label[id, T] in s,
     query label
         filter e and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate label/relation [id]],
+        in s |-> [_] | error $[Duplicate label/relation [id]],
     try { query label
             filter I and { x :- x == id }
             in s |-> []
@@ -216,7 +216,7 @@ rules
   isUniqueImportedLabel(s, (_, (id, _))) :-
     query label
         filter I and { x :- x == id }
-        in s |-> [(_, (_, _))] | error $[Duplicate imported label/relation [id]].
+        in s |-> [_] | error $[Duplicate imported label/relation [id]].
 
   // KIND OF CONSTRAINTS
   setCKind: scope * ConstraintId * CKind
@@ -228,11 +228,11 @@ rules
 
   resolveCKind(s, id) = ps :-
     query cKind
-        filter P*I* and { x :- x == id }
+        filter I* and { x :- x == id }
         in s |-> ps.
 
-  getCKind(s, id) = kind :- {id'}
-    resolveCKind(s, id) == [(_, (id', kind))|_].
+  getCKind(s, id) = kind :-
+    resolveCKind(s, id) == [(_, (_, kind))|_].
 
   // RULE PATTERNS
   declarePattern: scope * ConstraintId * list(Term)
@@ -255,11 +255,11 @@ rules
   sortRefListLength([_|tail]) = #(1 + sum) :-
     sum == sortRefListLength(tail).
 
-  termLength : list(Term) -> int
+  termListLength : list(Term) -> int
 
-  termLength([]) = 0.
-  termLength([_|tail]) = #(1 + sum) :-
-    sum == termLength(tail).
+  termListLength([]) = 0.
+  termListLength([_|tail]) = #(1 + sum) :-
+    sum == termListLength(tail).
 
   concatTermList : list(Term) * list(Term) -> list(Term)
 

@@ -41,7 +41,7 @@ rules
   ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars}
     PRED(TS) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
-    vars == removeDuplicateVars(patternsOk(s, TS, args)),
+    vars == removeDuplicateVars(patternsOk(s, args, TS)),
     declareVariables(s, vars),
     declarePattern(s_mod, id, args),
     noDuplicatePatterns(s_mod, id, args, a),
@@ -50,8 +50,8 @@ rules
   ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars}
     FUN(ATS, RT) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
-    vs1 == patternsOk(s, ATS, args),
-    vs2 == patternOk(s, RT, result),
+    vs1 == patternsOk(s, args, ATS),
+    vs2 == patternOk(s, result, RT),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
     declareVariables(s, vars),
     declarePattern(s_mod, id, args),
@@ -65,79 +65,79 @@ rules
     relDeclOk(s, rd).
 
   //Checking patterns and extracting new variables
-  patternOk: scope * TType * Term -> list(string)
+  patternOk: scope * Term * TType -> list(string)
 
-  patternOk(_, INT(), Int2Term(a@Int(_))) = [] :-
+  patternOk(_, Int2Term(a@Int(_)), INT()) = [] :-
     @a.type := INT().
-  patternOk(_, STRING(), Str2Term(a@Str(_))) = [] :-
+  patternOk(_, Str2Term(a@Str(_)), STRING()) = [] :-
     @a.type := STRING().
 
-  patternOk(_, T, Var2Term(a@Wld())) = [] :-
+  patternOk(_, Var2Term(a@Wld()), T) = [] :-
     @a.type := T.
-  patternOk(s, T, Var2Term(a@Var(var))) = [var] :-
+  patternOk(s, Var2Term(a@Var(var)), T) = [var] :-
     T == typeOfVariable(s, var),
     @a.type := T.
 
-  patternOk(s, T, a@Tuple(ts)) = vars :- {TS}
+  patternOk(s, a@Tuple(ts), T) = vars :- {TS}
     T == TUPLE(TS),
-    vars == patternsOk(s, TS, ts),
+    vars == patternsOk(s, ts, TS),
     @a.type := T.
 
-  patternOk(s, T, a@List(xs)) = vars :- {LT}
+  patternOk(s, a@List(xs), T) = vars :- {LT}
     T == LIST(LT),
-    vars == listPatternOk(s, LT, xs),
+    vars == listPatternOk(s, xs, LT),
     @a.type := T.
 
-  patternOk(s, T, a@ListTail(xs, tail)) = concatStringList(vs1, vs2) :- {LT}
+  patternOk(s, a@ListTail(xs, tail), T) = concatStringList(vs1, vs2) :- {LT}
     T == LIST(LT),
-    vs1 == listPatternOk(s, LT, xs),
-    vs2 == patternOk(s, T, tail),
+    vs1 == listPatternOk(s, xs, LT),
+    vs2 == patternOk(s, tail, T),
     @a.type := T.
 
-  patternOk(s, T, a@Op(id, Terms2CommaTerms(ts))) = vars :- {TS sid len}
-    len == termLength(ts),
+  patternOk(s, a@Op(id, Terms2CommaTerms(ts)), T) = vars :- {TS sid len}
+    len == termListLength(ts),
     (TS, T) == typeOfCons(s, id, len),
-    vars == patternsOk(s, TS, ts),
+    vars == patternsOk(s, ts, TS),
     @a.type := T.
 
-  patternOk(s, T, a@COp(cid, Terms2CommaTerms(ts))) = vars :- {RT ATS}
+  patternOk(s, a@COp(cid, Terms2CommaTerms(ts)), T) = vars :- {RT ATS}
     FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
-    RT == T,
-    vars == patternsOk(s, ATS, ts),
+    RT == T | error $[Return type [RT] doesn't match expected type [T]],
+    vars == patternsOk(s, ts, ATS),
     @a.type := T.
 
-  patternOk(s, T, a@As(v@Wld(), term)) = patternOk(s, T, term) :-
-    try { false } | warning "Ascribing to a wildcard is counterintuitive",
+  patternOk(s, a@As(v@Wld(), term), T) = patternOk(s, term, T) :-
+    try { false } | warning "Are you sure you want to ascribe to a wildcard?",
     @a.type := T,
     @v.type := T.
-  patternOk(s, T, a@As(v@Var(var), term)) = [var|vars] :-
+  patternOk(s, a@As(v@Var(var), term), T) = [var|vars] :-
     T == typeOfVariable(s, var),
-    vars == patternOk(s, T, term),
+    vars == patternOk(s, term, T),
     @a.type := T,
     @v.type := T.
 
-  patternOk(s, T, a@Ascribe(term, ty)) = patternOk(s, T, term) :-
+  patternOk(s, a@Ascribe(term, ty), T) = patternOk(s, term, T) :-
     T == sortRefToType(s, ty),
     @a.type := T.
 
-  patternOk(s, SCOPE(), a@NewOp()) = [] :-
+  patternOk(s, a@NewOp(), SCOPE()) = [] :-
     @a.type := SCOPE().
 
-  patternOk(s, AST_ID(), a@AstIdOp(t)) = patternOk(s, _, t) :-
+  patternOk(s, a@AstIdOp(t), AST_ID()) = patternOk(s, t, _) :-
     @a.type := AST_ID().
 
-  patternOk(s, PATH(), Path2Term(PathLit2Path(a@PathEmpty(st)))) = vars :-
-    vars == patternOk(s, SCOPE(), st),
+  patternOk(s, Path2Term(PathLit2Path(a@PathEmpty(st))), PATH()) = vars :-
+    vars == patternOk(s, st, SCOPE()),
     @a.type := PATH().
 
-  patternOk(s, PATH(), Path2Term(PathLit2Path(a@PathStep(pt, lt, st)))) = vars :- {vs1 vs2 vs3}
-    vs1 == patternOk(s, PATH(), pt),
-    vs2 == patternOk(s, LABEL(), lt),
-    vs3 == patternOk(s, SCOPE(), st),
+  patternOk(s, Path2Term(PathLit2Path(a@PathStep(pt, lt, st))), PATH()) = vars :- {vs1 vs2 vs3}
+    vs1 == patternOk(s, pt, PATH()),
+    vs2 == patternOk(s, lt, LABEL()),
+    vs3 == patternOk(s, st, SCOPE()),
     vars == concatStringList(vs1, concatStringList(vs2, vs3)),
     @a.type := PATH().
 
-  patternOk(s, T, a@ArithOp(aExp)) = arithPatternOk(s, aExp) :-
+  patternOk(s, a@ArithOp(aExp), T) = arithPatternOk(s, aExp) :-
     T == INT(),
     @a.type := T.
 
@@ -176,19 +176,19 @@ rules
     vs1 == arithPatternOk(s, e1),
     vs2 == arithPatternOk(s, e2).
 
-  patternsOk: scope * list(TType) * list(Term) -> list(string)
+  patternsOk: scope * list(Term) * list(TType) -> list(string)
 
   patternsOk(_, [], []) = [].
-  patternsOk(s, [T|TS], [x|xs]) = concatStringList(vs1, vs2) :-
-    vs1 == patternOk(s, T, x),
-    vs2 == patternsOk(s, TS, xs).
+  patternsOk(s, [x|xs], [T|TS]) = concatStringList(vs1, vs2) :-
+    vs1 == patternOk(s, x, T),
+    vs2 == patternsOk(s, xs, TS).
 
-  listPatternOk: scope * TType * list(Term) -> list(string)
+  listPatternOk: scope * list(Term) * TType -> list(string)
 
-  listPatternOk(_, _, []) = [].
-  listPatternOk(s, T, [x|xs]) = concatStringList(vs1, vs2) :-
-    vs1 == patternOk(s, T, x),
-    vs2 == listPatternOk(s, T, xs).
+  listPatternOk(_, [], _) = [].
+  listPatternOk(s, [x|xs], T) = concatStringList(vs1, vs2) :-
+    vs1 == patternOk(s, x, T),
+    vs2 == listPatternOk(s, xs, T).
 
 rules
   cDeclOk(s, CDerive2CDecl(cd)) :-

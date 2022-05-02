@@ -85,7 +85,7 @@ rules
 
   hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
     new s_hc, s_hc -P-> s,
-    vars == removeDuplicateVars(patternsOk(s_hc, TS, args)),
+    vars == removeDuplicateVars(patternsOk(s_hc, args, TS)),
     declareVariables(s_hc, vars),
     constraintOk(s_hc, cnstrnt),
     @a.type := PRED(TS).
@@ -110,13 +110,13 @@ rules
   relationTypesMatch(FUN(ATS, RT), TS) :-
     TS == concatTTypeList(ATS, [RT]).
 
-  constraintOk(s, CResolveQuery(tgt, fltr, qmin, st, result, m)) :- {T}
+  constraintOk(s, CResolveQuery(tgt, fltr, qmin, st, result, msg)) :- {T}
     T == queryTargetToType(s, tgt),
     filterOk(s, fltr, inType(T)),
     minOk(s, qmin, inType(T)),
     SCOPE() == termOk(s, st),
     LIST(TUPLE([PATH(), inOutType(T)])) == termOk(s, result),
-    messageOk(s, m).
+    messageOk(s, msg).
 
   queryTargetToType: scope * QueryTarget -> IType
 

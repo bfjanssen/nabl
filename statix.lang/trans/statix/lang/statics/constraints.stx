@@ -11,8 +11,8 @@ rules
 
   constraintOk(_, CTrue()).
 
-  constraintOk(s, CFalse(m)) :-
-    messageOk(s, m).
+  constraintOk(s, CFalse(msg)) :-
+    messageOk(s, msg).
 
   constraintOk(s, CConj(l, r)) :-
     constraintOk(s, l),
@@ -26,27 +26,27 @@ rules
     EDGE() == typeOfLabel(s, l),
     SCOPE() == termOk(s, t2).
 
-  constraintOk(s, CEqual(l, r, m)) :- {T1 T2}
+  constraintOk(s, CEqual(l, r, msg)) :- {T1 T2}
     T1 == termOk(s, l),
     T2 == termOk(s, r),
     T1 == T2 | error $[Cannot unify types [T1] and [T2]],
-    messageOk(s, m).
+    messageOk(s, msg).
 
-  constraintOk(s, CInequal(l, r, m)) :- {T1 T2}
+  constraintOk(s, CInequal(l, r, msg)) :- {T1 T2}
     T1 == termOk(s, l),
     T2 == termOk(s, r),
     T1 == T2 | error $[Cannot unify types [T1] and [T2]],
-    messageOk(s, m).
+    messageOk(s, msg).
 
-  constraintOk(s, C(cid, ts, m)) :- {TS}
+  constraintOk(s, C(cid, ts, msg)) :- {TS}
     PRED(TS) == typeOfConstraint(s, cid) | error "Inline notation can only be used for non-functional constraints",
     TS == termsOk(s, ts),
-    messageOk(s, m).
+    messageOk(s, msg).
 
-  constraintOk(s, CTry(c, m)) :- {s_try}
+  constraintOk(s, CTry(c, msg)) :- {s_try}
     new s_try, s_try -P-> s,
     constraintOk(s_try, c),
-    tryMessageOk(s, m).
+    tryMessageOk(s, msg).
 
   constraintOk(s, CExists(vars, c)) :- {s_exists}
     new s_exists, s_exists -P-> s,
@@ -58,17 +58,17 @@ rules
     AST_ID() == termOk(s, t2).
 
   constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
-    try { false } | warning "Assigning property to wildcard is counterintuitive",
+    try { false } | warning "Are you sure you want to assign a property to a wildcard?",
     _ == termOk(s, t).
   constraintOk(s, CAstProperty(Var2TermOrTermIndex(v@Var(var)), _, _, t)) :- {T}
     T == typeOfVariable(s, var),
     @v.type := T,
     _ == termOk(s, t).
 
-  constraintOk(s, CArith(e1, _, e2, m)) :-
+  constraintOk(s, CArith(e1, _, e2, msg)) :-
     arithExpOk(s, e1),
     arithExpOk(s, e2),
-    messageOk(s, m).
+    messageOk(s, msg).
 
 rules
   messageOk : scope * Message
@@ -76,7 +76,7 @@ rules
   messageOk(_, NoMessage()).
   messageOk(s, Message(kind, content, origin)) :- {kindString}
     kindString == kindToString(kind),
-    kind == Error() | error $[use 'try' for [kindString]],
+    kind == Error() | error $[Use 'try' for [kindString]],
     messageContentOk(s, content),
     messageOriginOk(s, origin).
 
@@ -103,7 +103,8 @@ rules
 
   messageOriginOk : scope * MessageOrigin
   messageOriginOk(_, NoOrigin()).
-  messageOriginOk(_, Origin(Wld())).
+  messageOriginOk(_, Origin(Wld())) :-
+    try { false } | warning "Are you sure you want to use a wildcard as message origin?".
 
   messageOriginOk(s, Origin(Var(var))) :-
     _ == typeOfVariable(s, var).

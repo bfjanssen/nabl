@@ -38,7 +38,7 @@ rules
     @a.type := TUPLE(TS).
 
   termOk(s, a@Op(id, Terms2CommaTerms(ts))) = T :- {CTS sid len}
-    len == termLength(ts),
+    len == termListLength(ts),
     (CTS, T) == typeOfCons(s, id, len),
     CTS == termsOk(s, ts),
     @a.type := T.
@@ -52,7 +52,7 @@ rules
     T == termOk(s, term),
     @a.type := T,
     @w.type := T,
-    try { false } | warning "Ascribing to a wildcard is counterintuitive".
+    try { false } | warning "Are you sure you want to ascribe to a wildcard?".
   termOk(s, a@As(v@Var(var), term)) = T :-
     T == typeOfVariable(s, var),
     T == termOk(s, term),
