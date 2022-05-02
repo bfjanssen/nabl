@@ -59,7 +59,7 @@ test correct scope extension [[
 ]] analysis succeeds
 
 test left argument scope extension has to be of type scope [[
-  resolve {s} new s, s -P-> 8
+  resolve {s} new s, 8 -P-> s
 
   signature
     name-resolution
@@ -67,7 +67,7 @@ test left argument scope extension has to be of type scope [[
 ]] analysis fails
 
 test right argument scope extension has to be of type scope [[
-  resolve {s} new s, 8 -P-> s
+  resolve {s} new s, s -P-> 8
 
   signature
     name-resolution

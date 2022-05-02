@@ -143,6 +143,13 @@ test result term has incorrect type [[
       in s |-> [(_, ("x", "8"))].
 ]] analysis fails
 
+test end of path target gives correct result pattern [[
+  rules
+    rule(s) :- {ps}
+      query ()
+      in s |-> ps : list((path * scope)).
+]] analysis succeeds
+
 test query failing message [[
   rules
     rule(s) :-
@@ -199,6 +206,14 @@ test correct filter higher order constraint typing functional relation [[
       filter P* and {x :- x == "hi" }
       in s |-> _.
 ]] analysis succeeds
+
+test correct filter end of path query [[
+  rules
+    rule(s) :-
+      query ()
+      filter P* and {x : scope :- true }
+      in s |-> _.
+]]
 
 test filter higher order constraint using correctly typed rule [[
   rules
@@ -299,6 +314,14 @@ test correct typing min higher order constraint functional relation [[
     rule(s) :-
       query varF
       min $ < P and { x, y :- x == "hi", y == "hello" }
+      in s |-> _.
+]] analysis succeeds
+
+test correct typing min higher order constraint end of path query [[
+  rules
+    rule(s) :-
+      query ()
+      min $ < P and {x : scope, y : scope :- true }
       in s |-> _.
 ]] analysis succeeds
 
