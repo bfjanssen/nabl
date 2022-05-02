@@ -40,7 +40,7 @@ rules
 
   ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars}
     PRED(TS) == typeOfConstraint(s, id),
-    DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
+    DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
     vars == removeDuplicateVars(patternsOk(s, args, TS)),
     declareVariables(s, vars),
     declarePattern(s_mod, id, args),
@@ -49,7 +49,7 @@ rules
 
   ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars}
     FUN(ATS, RT) == typeOfConstraint(s, id),
-    DeclaredC() == getCKind(s, id) | error "Rules can only be defined for declared constraints.",
+    DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
     vs1 == patternsOk(s, args, ATS),
     vs2 == patternOk(s, result, RT),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
