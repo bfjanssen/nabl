@@ -281,7 +281,7 @@ lexical syntax
  ******************************************************************/
 
 context-free sorts
-  QueryTarget QueryFilter QueryMin
+  CResolveQuery QueryTarget QueryFilter QueryMin
 
 context-free syntax
 

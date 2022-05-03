@@ -110,7 +110,12 @@ rules
   relationTypesMatch(FUN(ATS, RT), TS) :-
     TS == concatTTypeList(ATS, [RT]).
 
-  constraintOk(s, CResolveQuery(tgt, fltr, qmin, st, result, msg)) :- {T}
+  constraintOk(s, CResolveQuery2Constraint(q)) :-
+    queryOk(s, q).
+
+  queryOk: scope * CResolveQuery
+
+  queryOk(s, CResolveQuery(tgt, fltr, qmin, st, result, msg)) :- {T}
     T == queryTargetToType(s, tgt),
     filterOk(s, fltr, inType(T)),
     minOk(s, qmin, inType(T)),
