@@ -78,16 +78,25 @@ rules
   duplicateImportedConstraints(s, s_import) :- {ps}
     query predicate
         filter I*
+        min $ < I
         in s_import |-> ps,
     areUniqueImportedConstraints(s, ps).
 
   isUniqueImportedConstraint: scope * (path * (ConstraintId * IType))
   areUniqueImportedConstraints maps isUniqueImportedConstraint(*, list(*))
 
-  isUniqueImportedConstraint(s, (_, (id, _))) :-
+  isUniqueImportedConstraint(s, (_, (id, _))) :- {p ps}
     query predicate
         filter I+ and { x :- x == id }
-        in s |-> [_] | error $[Duplicate imported constraint [id]].
+        in s |-> [(p, _)|ps],
+        uniqueConstraintDecls(ps, startOfPathScope(p)) | error $[Duplicate imported constraint [id]].
+
+  uniqueConstraintDecls: list((path * (ConstraintId * IType))) * scope
+
+  uniqueConstraintDecls([], _).
+  uniqueConstraintDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueConstraintDecls(ps, s).
 
   // VARIABLES
   declareVariable: scope * VARID
@@ -136,16 +145,25 @@ rules
   duplicateImportedSorts(s, s_import) :- {ps}
     query sort
         filter I*
+        min $ < I
         in s_import |-> ps,
     areUniqueImportedSorts(s, ps).
 
   isUniqueImportedSort: scope * (path * (SortId * TType))
   areUniqueImportedSorts maps isUniqueImportedSort(*, list(*))
 
-  isUniqueImportedSort(s, (_, (id, _))) :-
+  isUniqueImportedSort(s, (_, (id, _))) :- {p ps}
     query sort
         filter I+ and { x :- x == id }
-        in s |-> [_] | error $[Duplicate imported sort [id]].
+        in s |-> [(p, _)|ps],
+        uniqueSortDecls(ps, startOfPathScope(p)) | error $[Duplicate imported sort [id]].
+
+  uniqueSortDecls: list((path * (SortId * TType))) * scope
+
+  uniqueSortDecls([], _).
+  uniqueSortDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueSortDecls(ps, s).
 
   // CONSTRUCTORS
   declareCons: scope * OpId * int * (list(TType) * TType)
@@ -168,16 +186,25 @@ rules
   duplicateImportedCons(s, s_import) :- {ps}
     query cons
         filter I*
+        min $ < I
         in s_import |-> ps,
     areUniqueImportedCons(s, ps).
 
   isUniqueImportedCons: scope * (path * (OpId * int * (list(TType) * TType)))
   areUniqueImportedCons maps isUniqueImportedCons(*, list(*))
 
-  isUniqueImportedCons(s, (_, (id, arity, _))) :-
+  isUniqueImportedCons(s, (_, (id, arity, _))) :- {p ps}
     query cons
         filter I+ and { (x, y) :- x == id, y == arity }
-        in s |-> [_] | error $[Duplicate imported constructor [id]/[arity]].
+        in s |-> [(p, _)|ps],
+        uniqueConsDecls(ps, startOfPathScope(p)) | error $[Duplicate imported constructor [id]/[arity]].
+
+  uniqueConsDecls: list((path * (OpId * int * (list(TType) * TType)))) * scope
+
+  uniqueConsDecls([], _).
+  uniqueConsDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueConsDecls(ps, s).
 
   // RELATIONS OR LABELS
   declareLabel: scope * RelationId * LType
@@ -315,10 +342,10 @@ rules
   flattenListTail(ListTail(hs1, ListTail(hs2, t))) = flattenListTail(ListTail(concatTermList(hs1, hs2), t)).
   flattenListTail(t) = t.
 
-  endOfPathScope : path -> scope
+  startOfPathScope : path -> scope
 
-  endOfPathScope(_PathEmpty(s)) = s.
-  endOfPathScope(_PathStep(p, _, _)) = endOfPathScope(p).
+  startOfPathScope(_PathEmpty(s)) = s.
+  startOfPathScope(_PathStep(_, _, s)) = s.
 
 rules
   typeEq: TType * TType
