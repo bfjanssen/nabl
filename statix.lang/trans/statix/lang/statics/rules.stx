@@ -38,24 +38,26 @@ rules
 
   ruleHeadOk: scope * RuleHead * scope
 
-  ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars}
+  ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars s_decl}
     PRED(TS) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
     vars == removeDuplicateVars(patternsOk(s, args, TS)),
     declareVariables(s, vars),
-    declarePattern(s_mod, id, args),
-    noDuplicatePatterns(s_mod, id, args, a),
+    s_decl == scopeOfConstraint(s, id),
+    declarePattern(s_mod, id, args, s_decl),
+    noDuplicatePatterns(s_mod, id, args, s_decl, a),
     @a.type := PRED(TS).
 
-  ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars}
+  ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars s_decl}
     FUN(ATS, RT) == typeOfConstraint(s, id),
     DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
     vs1 == patternsOk(s, args, ATS),
     vs2 == patternOk(s, result, RT),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
     declareVariables(s, vars),
-    declarePattern(s_mod, id, args),
-    noDuplicatePatterns(s_mod, id, args, a),
+    s_decl == scopeOfConstraint(s, id),
+    declarePattern(s_mod, id, args, s_decl),
+    noDuplicatePatterns(s_mod, id, args, s_decl, a),
     @a.type := FUN(ATS, RT).
 
   ruleOk(s, CDecl2Rule(cd)) :-

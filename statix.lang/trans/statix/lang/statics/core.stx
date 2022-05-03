@@ -11,6 +11,7 @@ imports
   statix/lang/statics/constraints
   statix/lang/statics/rules
   statix/lang/statics/relations
+  statix/lang/statics/duplicate-patterns
 
 rules
   projectOk: scope
@@ -79,7 +80,8 @@ rules
   importOk(s, Import(id)) :- {s_import}
     s_import == scopeOfModule(s, id),
     s -I-> s_import,
-    duplicateImportedConstraints(s, s_import),
-    duplicateImportedSorts(s, s_import),
-    duplicateImportedCons(s, s_import),
-    duplicateImportedLabels(s, s_import).
+    noDuplicateImportedConstraints(s, s_import),
+    noDuplicateImportedSorts(s, s_import),
+    noDuplicateImportedCons(s, s_import),
+    noDuplicateImportedLabels(s, s_import),
+    noDuplicateImportedPatterns(s, s_import).

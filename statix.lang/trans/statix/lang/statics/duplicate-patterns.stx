@@ -8,29 +8,41 @@ signature
   sorts
     Mapping = (string * string)
     Mappings = list((string * string))
+    Declaration = (path * (ConstraintId * (list(Term) * scope)))
+    Declarations = list((path * (ConstraintId * (list(Term) * scope))))
 
 rules
 
-noDuplicatePatterns : scope * ConstraintId * list(Term) * RuleHead
+noDuplicatePatterns : scope * ConstraintId * list(Term) * scope * RuleHead
 
-noDuplicatePatterns(s, id, pattern, head) :- {ps filtered}
+noDuplicatePatterns(s, id, pattern, s_decl, head) :- {ps filtered1 filtered2}
   ps == resolvePatterns(s, id),
-  filtered == removeDifferentPatterns(pattern, ps),
-  isUniquePattern(id, filtered, head).
+  filtered1 == removeIrrelevantPatterns(s_decl, ps),
+  filtered2 == removeDifferentPatterns(pattern, filtered1),
+  isUniquePattern(id, filtered2, head).
 
-removeDifferentPatterns : list(Term) * list((path * (ConstraintId * list(Term)))) -> list((path * (ConstraintId * list(Term))))
+removeIrrelevantPatterns : scope * Declarations -> Declarations
+
+removeIrrelevantPatterns(_, []) = [].
+removeIrrelevantPatterns(s_decl, [d@(_, (_, (_, s)))| ds]) = removeIrrelevantPatternsHelper(scopeIsEqual(s_decl, s), s_decl, d, ds).
+
+removeIrrelevantPatternsHelper : int * scope * Declaration * Declarations -> Declarations
+
+removeIrrelevantPatternsHelper(1, s_decl, d, ds) = [d | removeIrrelevantPatterns(s_decl, ds)].
+removeIrrelevantPatternsHelper(0, s_decl, _, ds) = removeIrrelevantPatterns(s_decl, ds).
+
+removeDifferentPatterns : list(Term) * Declarations -> Declarations
 
 removeDifferentPatterns(_, []) = [].
+removeDifferentPatterns(p1, [d@(_,(_, (p2, _)))| ds]) = removeDifferentPatternsHelper(comparePatterns(p1, p2, []), p1, d, ds).
 
-removeDifferentPatterns(p1, [t@(_,(_, p2))| ps]) = removeDifferentPatternsHelper(comparePatterns(p1, p2, []), p1, t, ps).
+removeDifferentPatternsHelper : (int * Mappings) * list(Term) * Declaration *
+                                Declarations -> Declarations
 
-removeDifferentPatternsHelper : (int * Mappings) * list(Term) * (path * (ConstraintId * list(Term))) *
-                                list((path * (ConstraintId * list(Term)))) -> list((path * (ConstraintId * list(Term))))
+removeDifferentPatternsHelper((1, _), p1, _, ds) = removeDifferentPatterns(p1, ds).
+removeDifferentPatternsHelper((0, _), p1, d, ds) = [d | removeDifferentPatterns(p1, ds)].
 
-removeDifferentPatternsHelper((1, _), p1, t, ps) = removeDifferentPatterns(p1, ps).
-removeDifferentPatternsHelper((0, _), p1, t, ps) = [t | removeDifferentPatterns(p1, ps)].
-
-isUniquePattern : string * list((path * (ConstraintId * list(Term)))) * RuleHead
+isUniquePattern : string * Declarations * RuleHead
 
 isUniquePattern(_, [], head) :- false | error "NO PATTERN IS EQUAL" @head. //Would indicate a bug
 isUniquePattern(_, [_], _).
@@ -44,7 +56,7 @@ duplicatePatternErrorMessage(0, id, head) :-
 duplicatePatternErrorMessage(1, id, head) :-
     false | error $[Rule pattern equivalent to imported rule for rule [id]] @head.
 
-containsImportedPattern : list((path * (ConstraintId * list(Term)))) -> int
+containsImportedPattern : Declarations -> int
 
 containsImportedPattern([]) = 0.
 containsImportedPattern([(_PathStep(_, _, _), _)|_]) = 1.
@@ -54,22 +66,42 @@ rules
 
 noDuplicateImportedPatterns: scope * scope
 
-noDuplicateImportedPatterns(s, s_import) :- {ps}
-    query rulePattern
+noDuplicateImportedPatterns(s, s_import) :- {preds}
+    query predicate
     filter I*
-    in s_import |-> ps.
+    in s_import |-> preds,
+    checkEveryConstraint(preds, s, s_import).
 
-checkAllPatterns: scope * list((path * (ConstraintId * list(Term))))
+checkEveryConstraint: list((path * (ConstraintId * IType))) * scope * scope
 
-checkAllPatterns(_, []).
-checkAllPatterns(s, [(_, (id, pattern))|ps]) :- {imports filtered}
+checkEveryConstraint([], _, _).
+checkEveryConstraint([(p,(id, _))|preds], s, s_import) :- {s_decl patterns filtered}
+    s_decl == startOfPathScope(p),
+    query rulePattern
+    filter I* and { x :- x == id }
+    in s_import |-> patterns,
+    filtered == removeIrrelevantPatterns(s_decl, patterns),
+    checkAllImportedPatterns(filtered, s),
+    checkEveryConstraint(preds, s, s_import).
+
+checkAllImportedPatterns: Declarations * scope
+
+checkAllImportedPatterns([], _).
+checkAllImportedPatterns([(_, (id, (pattern, s_decl)))|patterns], s) :- {imports filtered1 filtered2 p}
     query rulePattern
     filter I+ and { x :- x == id }
-    min $ < I
     in s |-> imports,
-    [_] == removeDifferentPatterns(pattern, imports) | error $[Duplicate imported rule pattern of rule [id]],
-    checkAllPatterns(s, ps).
+    filtered1 == removeIrrelevantPatterns(s_decl, imports),
+    [(p, _)|filtered2] == removeDifferentPatterns(pattern, filtered1),
+    uniquePatternDecls(filtered2, startOfPathScope(p)) | error $[Duplicate imported rule patterns of rule [id]],
+    checkAllImportedPatterns(patterns, s).
 
+uniquePatternDecls: Declarations * scope
+
+  uniquePatternDecls([], _).
+  uniquePatternDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniquePatternDecls(ps, s).
 
 rules
 

@@ -26,7 +26,7 @@ signature
 
     cKind       :   ConstraintId -> CKind
 
-    rulePattern :   ConstraintId -> list(Term)
+    rulePattern :   ConstraintId -> (list(Term) * scope)
 
   name-resolution
     labels P I
@@ -54,7 +54,8 @@ rules
   declareConstraint: scope * ConstraintId * IType
   resolveConstraint: scope * ConstraintId -> list((path * (ConstraintId * IType)))
   typeOfConstraint: scope * ConstraintId -> IType
-  duplicateImportedConstraints: scope * scope
+  scopeOfConstraint: scope * ConstraintId -> scope
+  noDuplicateImportedConstraints: scope * scope
 
   declareConstraint(s, id, T) :-
     !predicate[id, T] in s,
@@ -75,7 +76,10 @@ rules
   typeOfConstraint(s, id) = T :- {id'}
     resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined].
 
-  duplicateImportedConstraints(s, s_import) :- {ps}
+  scopeOfConstraint(s, id) = startOfPathScope(p) :-
+    resolveConstraint(s, id) == [(p, _)|_].
+
+  noDuplicateImportedConstraints(s, s_import) :- {ps}
     query predicate
         filter I*
         min $ < I
@@ -128,7 +132,7 @@ rules
   declareSort: scope * SortId * TType
   resolveSort: scope * SortId -> list((path * (SortId * TType)))
   typeOfSort: scope * SortId -> TType
-  duplicateImportedSorts: scope * scope
+  noDuplicateImportedSorts: scope * scope
 
   declareSort(s, id, T) :-
     !sort[id, T] in s,
@@ -142,7 +146,7 @@ rules
   typeOfSort(s, id) = T :- {id'}
     resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined].
 
-  duplicateImportedSorts(s, s_import) :- {ps}
+  noDuplicateImportedSorts(s, s_import) :- {ps}
     query sort
         filter I*
         min $ < I
@@ -169,7 +173,7 @@ rules
   declareCons: scope * OpId * int * (list(TType) * TType)
   resolveCons: scope * OpId * int -> list((path * (OpId * int * (list(TType) * TType))))
   typeOfCons: scope * OpId * int -> (list(TType) * TType)
-  duplicateImportedCons: scope * scope
+  noDuplicateImportedCons: scope * scope
 
   declareCons(s, id, arity, T) :-
     !cons[id, arity, T] in s,
@@ -183,7 +187,7 @@ rules
   typeOfCons(s, id, arity) = T :- {id' arity'}
     resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
 
-  duplicateImportedCons(s, s_import) :- {ps}
+  noDuplicateImportedCons(s, s_import) :- {ps}
     query cons
         filter I*
         min $ < I
@@ -210,7 +214,7 @@ rules
   declareLabel: scope * RelationId * LType
   resolveLabel: scope * RelationId -> list((path * (RelationId * LType)))
   typeOfLabel: scope * RelationId -> LType
-  duplicateImportedLabels: scope * scope
+  noDuplicateImportedLabels: scope * scope
 
   declareLabel(s, id, T) :-
     !label[id, T] in s,
@@ -231,7 +235,7 @@ rules
   typeOfLabel(s, id) = T :- {id'}
     resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined].
 
-  duplicateImportedLabels(s, s_import) :- {ps}
+  noDuplicateImportedLabels(s, s_import) :- {ps}
     query label
         filter e
         in s_import |-> ps,
@@ -262,16 +266,15 @@ rules
     resolveCKind(s, id) == [(_, (_, kind))|_].
 
   // RULE PATTERNS
-  declarePattern: scope * ConstraintId * list(Term)
-  resolvePatterns: scope * ConstraintId -> list((path * (ConstraintId * list(Term))))
+  declarePattern: scope * ConstraintId * list(Term) * scope
+  resolvePatterns: scope * ConstraintId -> list((path * (ConstraintId * (list(Term) * scope))))
 
-  declarePattern(s, id, pattern) :-
-    !rulePattern[id, pattern] in s.
+  declarePattern(s, id, pattern, s_decl) :-
+    !rulePattern[id, (pattern, s_decl)] in s.
 
   resolvePatterns(s, id) = ps :-
     query rulePattern
         filter I* and { x :- x == id }
-        min $ < I
         in s |-> ps.
 
 // Utility
@@ -346,6 +349,11 @@ rules
 
   startOfPathScope(_PathEmpty(s)) = s.
   startOfPathScope(_PathStep(_, _, s)) = s.
+
+  scopeIsEqual : scope * scope -> int
+
+  scopeIsEqual(s, s) = 1.
+  scopeIsEqual(_, _) = 0.
 
 rules
   typeEq: TType * TType
