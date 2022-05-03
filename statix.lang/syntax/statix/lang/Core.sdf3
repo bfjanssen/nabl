@@ -285,7 +285,9 @@ context-free sorts
 
 context-free syntax
 
-  Constraint.CResolveQuery = [
+  Constraint = CResolveQuery
+
+  CResolveQuery.CResolveQuery = [
     query [QueryTarget]
      [QueryFilter]
      [QueryMin]
@@ -502,7 +504,7 @@ lexical syntax
 
   MessageChars = MessageChar+
   MessageChar  = ~[\[\]\\\t\r\n]
-  MessageChar  = "\\[" | "\\]" | "\\\\"
+  MessageChar  = "\\[" | "\\]" | "\\n" | "\\r" | "\\t" | "\\\\"
 
 lexical restrictions
 

@@ -7,8 +7,7 @@ import mb.p_raffrayi.actors.IActorRef;
 import mb.p_raffrayi.impl.IUnit;
 import mb.p_raffrayi.nameresolution.DataLeq;
 import mb.p_raffrayi.nameresolution.DataWf;
-import mb.scopegraph.ecoop21.LabelOrder;
-import mb.scopegraph.ecoop21.LabelWf;
+import mb.p_raffrayi.nameresolution.IQuery;
 import mb.scopegraph.oopsla20.path.IScopePath;
 import mb.scopegraph.oopsla20.reference.Env;
 
@@ -27,15 +26,14 @@ public abstract class APQuery<S, L, D> implements IWaitFor<S, L, D> {
 
     // @Value.Parameter public abstract DataLeq<D> dataEquiv();
 
-    @Value.Parameter public abstract IFuture<Env<S, L, D>> future();
+    @Value.Parameter public abstract IFuture<?> future();
 
     @Override public void visit(Cases<S, L, D> cases) {
         cases.on((PQuery<S, L, D>) this);
     }
 
     public static <S, L, D> PQuery<S, L, D> of(IActorRef<? extends IUnit<S, L, D, ?>> origin, IScopePath<S, L> path,
-            @SuppressWarnings("unused") LabelWf<L> labelWF, DataWf<S, L, D> dataWF,
-            @SuppressWarnings("unused") LabelOrder<L> labelOrder,
+            @SuppressWarnings("unused") IQuery<S, L, D> query, DataWf<S, L, D> dataWF,
             @SuppressWarnings("unused") DataLeq<S, L, D> dataEquiv, IFuture<Env<S, L, D>> future) {
         return PQuery.of(origin, path, dataWF, future);
     }

@@ -4,6 +4,7 @@ import static com.google.common.collect.Streams.stream;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,11 +32,13 @@ import org.metaborg.util.log.LoggerUtils;
 import org.metaborg.util.tuple.Tuple2;
 import org.metaborg.util.unit.Unit;
 
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 import io.usethesource.capsule.Set;
 import mb.p_raffrayi.IIncrementalTypeCheckerContext;
+import mb.p_raffrayi.IRecordedQuery;
 import mb.p_raffrayi.IScopeGraphLibrary;
 import mb.p_raffrayi.ITypeChecker;
 import mb.p_raffrayi.ITypeChecker.IOutput;
@@ -73,22 +76,24 @@ import mb.p_raffrayi.impl.tokens.InitScope;
 import mb.p_raffrayi.impl.tokens.Query;
 import mb.p_raffrayi.nameresolution.DataLeq;
 import mb.p_raffrayi.nameresolution.DataWf;
+import mb.p_raffrayi.nameresolution.IQuery;
+import mb.p_raffrayi.nameresolution.NameResolutionQuery;
+import mb.p_raffrayi.nameresolution.StateMachineQuery;
 import mb.scopegraph.ecoop21.LabelOrder;
 import mb.scopegraph.ecoop21.LabelWf;
 import mb.scopegraph.oopsla20.IScopeGraph;
 import mb.scopegraph.oopsla20.diff.BiMap;
 import mb.scopegraph.oopsla20.path.IResolutionPath;
 import mb.scopegraph.oopsla20.reference.EdgeOrData;
-import mb.scopegraph.oopsla20.reference.Env;
 import mb.scopegraph.oopsla20.reference.ScopeGraph;
 import mb.scopegraph.oopsla20.terms.newPath.ScopePath;
 import mb.scopegraph.patching.IPatchCollection;
 import mb.scopegraph.patching.PatchCollection;
 import mb.scopegraph.patching.Patcher;
+import mb.scopegraph.resolution.StateMachine;
 
 class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L, D>>
-        extends AbstractUnit<S, L, D, Result<S, L, D, R, T>>
-        implements IIncrementalTypeCheckerContext<S, L, D, R, T> {
+        extends AbstractUnit<S, L, D, Result<S, L, D, R, T>> implements IIncrementalTypeCheckerContext<S, L, D, R, T> {
 
 
     private static final ILogger logger = LoggerUtils.logger(TypeCheckerUnit.class);
@@ -99,14 +104,14 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
 
     private volatile UnitState state;
 
-    private final BiMap.Transient<S> matchedBySharing = BiMap.Transient.of();
+    private final IPatchCollection.Transient<S> matchedBySharing = PatchCollection.Transient.of();
 
     private final Ref<IScopeGraph.Immutable<S, L, D>> localScopeGraph = new Ref<>(ScopeGraph.Immutable.of());
 
     private final Set.Transient<String> addedUnitIds = CapsuleUtil.transientSet();
 
     private final Ref<StateCapture<S, L, D, T>> localCapture = new Ref<>();
-    private final ICompletableFuture<Unit> whenActive = new CompletableFuture<>();           // activated when transitioning from unknown to active/released.
+    private final ICompletableFuture<Unit> whenActive = new CompletableFuture<>(); // activated when transitioning from unknown to active/released.
     private final ICompletableFuture<Unit> whenContextActivated = new CompletableFuture<>(); // activated when transitioning from local/unknown to active.
 
     private IEnvDiffer<S, L, D> envDiffer;
@@ -117,8 +122,11 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
     private final ICompletableFuture<Optional<IPatchCollection.Immutable<S>>> confirmationResult =
             new CompletableFuture<>();
 
+    // Intermediate confirmation result aggregations
     private final IPatchCollection.Transient<S> resultPatches = PatchCollection.Transient.of();
     private final IPatchCollection.Transient<S> globalPatches = PatchCollection.Transient.of();
+    private final Set.Transient<IRecordedQuery<S, L, D>> addedQueries = CapsuleUtil.transientSet();
+    private final Set.Transient<IRecordedQuery<S, L, D>> removedQueries = CapsuleUtil.transientSet();
 
     TypeCheckerUnit(IActor<? extends IUnit<S, L, D, Result<S, L, D, R, T>>> self,
             @Nullable IActorRef<? extends IUnit<S, L, D, ?>> parent, IUnitContext<S, L, D> context,
@@ -153,8 +161,8 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         return whenActive.compose((u, ex) -> {
             if(this.state.equals(UnitState.RELEASED) || this.state.equals(UnitState.DONE)
                     && this.stateTransitionTrace.equals(TransitionTrace.RELEASED)) {
-                return CompletableFuture
-                        .completedFuture(previousResult.result().analysis().getExternalRepresentation(datum));
+                final D result = previousResult.result().analysis().getExternalRepresentation(datum);
+                return CompletableFuture.completedFuture(context.substituteScopes(result, resultPatches.patches().invert()));
             }
             final IFuture<D> future = typeChecker.getExternalDatum(datum);
             if(future.isDone()) {
@@ -183,7 +191,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         resume();
 
         doStart(rootScopes);
-        if(previousResult != null) {
+        if(isIncrementalEnabled() && previousResult != null) {
             if(previousResult.rootScopes().size() != rootScopes.size()) {
                 throw new IllegalStateException("Root scope counts do not match.");
             }
@@ -207,7 +215,8 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
                 resume();
                 tryFinish();
             }).thenApply(r -> {
-                return Result.<S, L, D, R, T>of(r, localCapture.get(), localScopeGraph.get());
+                return Result.<S, L, D, R, T>of(r, localCapture.get(), localScopeGraph.get(),
+                        matchedBySharing.patchRange());
             });
         } catch(Exception e) {
             logger.error("Exception starting type-checker {}.", e);
@@ -215,7 +224,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         }
 
         // Start phantom units for all units that have not yet been restarted
-        if(previousResult != null) {
+        if(isIncrementalEnabled() && previousResult != null) {
             for(String removedId : Sets.difference(previousResult.subUnitResults().keySet(), addedUnitIds)) {
                 @SuppressWarnings("unchecked") final IUnitResult<S, L, D, ? extends IOutput<S, L, D>> subResult =
                         (IUnitResult<S, L, D, ? extends IOutput<S, L, D>>) previousResult.subUnitResults()
@@ -228,7 +237,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
 
         if(state == UnitState.INIT_TC) {
             // runIncremental not called, so start eagerly
-            doRestart();
+            doRestart(false);
         } else if(state == UnitState.DONE) {
             // Completed synchronously
             whenActive.complete(Unit.unit);
@@ -242,17 +251,18 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
     // IUnit2UnitProtocol interface, called by IUnit implementations
     ///////////////////////////////////////////////////////////////////////////
 
-    @Override public IFuture<ConfirmResult<S>> _confirm(ScopePath<S, L> path, LabelWf<L> labelWF,
+    @Override public IFuture<ConfirmResult<S, L, D>> _confirm(ScopePath<S, L> path, LabelWf<L> labelWF,
             DataWf<S, L, D> dataWF, boolean prevEnvEmpty) {
         assertConfirmationEnabled();
         stats.incomingConfirmations++;
         final IActorRef<? extends IUnit<S, L, D, ?>> sender = self.sender(TYPE);
-        final ICompletableFuture<ConfirmResult<S>> result = new CompletableFuture<>();
+        final ICompletableFuture<ConfirmResult<S, L, D>> result = new CompletableFuture<>();
         whenActive.whenComplete((__, ex) -> {
             if(ex != null && ex != Release.instance) {
                 result.completeExceptionally(ex);
             } else {
-                // TODO: Can we immediately confirm on `Release.instance` exception?
+                // Cannot immediately confirm on `Release.instance` exception
+                // because subunits might change edges in shared scopes.
                 confirmation.getConfirmation(new ConfirmationContext(sender))
                         .confirm(path, labelWF, dataWF, prevEnvEmpty).whenComplete(result::complete);
             }
@@ -260,17 +270,19 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         return result;
     }
 
-    @Override public IFuture<Env<S, L, D>> _queryPrevious(ScopePath<S, L> path, LabelWf<L> labelWF,
-            DataWf<S, L, D> dataWF, LabelOrder<L> labelOrder, DataLeq<S, L, D> dataEquiv) {
+    @Override public IFuture<IQueryAnswer<S, L, D>> _queryPrevious(ScopePath<S, L> path, IQuery<S, L, D> query,
+            DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv) {
         assertPreviousResultProvided();
-        return doQueryPrevious(self.sender(TYPE), previousResult.scopeGraph(), path, labelWF, dataWF, labelOrder,
-                dataEquiv);
+        return doQueryPrevious(self.sender(TYPE), previousResult.scopeGraph(), path, query, dataWF, dataEquiv);
     }
 
     @Override public IFuture<Optional<S>> _match(S previousScope) {
         assertOwnScope(previousScope);
-        if(matchedBySharing.containsValue(previousScope)) {
-            return CompletableFuture.completedFuture(Optional.of(matchedBySharing.getValue(previousScope)));
+        if(matchedBySharing.identityPatches().contains(previousScope)) {
+            return CompletableFuture.completedFuture(Optional.of(previousScope));
+        }
+        if(matchedBySharing.patchDomain().contains(previousScope)) {
+            return CompletableFuture.completedFuture(Optional.of(matchedBySharing.patch(previousScope)));
         }
         if(!changed && previousResult.result().localState() != null
                 && previousResult.result().localState().scopes().contains(previousScope)) {
@@ -296,14 +308,17 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
 
     @Override public void _restart() {
         assertIncrementalEnabled();
-        if(doRestart()) {
+        if(doRestart(true)) {
             stateTransitionTrace = TransitionTrace.RESTARTED;
         }
     }
 
     @Override public void _release() {
-        doRelease(PatchCollection.Immutable.<S>of().putAll(this.resultPatches),
-                PatchCollection.Immutable.<S>of().putAll(globalPatches));
+        if(state == UnitState.UNKNOWN) {
+            doRelease(CapsuleUtil.toSet(this.addedQueries), CapsuleUtil.toSet(this.removedQueries),
+                    PatchCollection.Immutable.<S>of().putAll(this.resultPatches),
+                    PatchCollection.Immutable.<S>of().putAll(globalPatches));
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -317,7 +332,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         return self.id();
     }
 
-    @Override public <Q extends IOutput<S, L, D>, U extends IState<S, L, D>>
+    @SuppressWarnings("unchecked") @Override public <Q extends IOutput<S, L, D>, U extends IState<S, L, D>>
             IFuture<IUnitResult<S, L, D, Result<S, L, D, Q, U>>>
             add(String id, ITypeChecker<S, L, D, Q, U> unitChecker, List<S> rootScopes, boolean changed) {
         assertActive();
@@ -326,49 +341,54 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         if(this.previousResult == null || !this.previousResult.subUnitResults().containsKey(id)) {
             this.addedUnitIds.__insert(id);
 
-            return ifActive(
-                    whenContextActive(this.<Result<S, L, D, Q, U>>doAddSubUnit(id, (subself, subcontext) -> {
-                        return new TypeCheckerUnit<>(subself, self, subcontext, unitChecker, edgeLabels);
-                    }, rootScopes, false)._2()));
+            return ifActive(whenContextActive(this.<Result<S, L, D, Q, U>>doAddSubUnit(id, (subself, subcontext) -> {
+                return new TypeCheckerUnit<>(subself, self, subcontext, unitChecker, edgeLabels);
+            }, rootScopes, false)._2()));
         }
 
-        @SuppressWarnings("unchecked") final IUnitResult<S, L, D, Result<S, L, D, Q, U>> subUnitPreviousResult =
-                (IUnitResult<S, L, D, Result<S, L, D, Q, U>>) this.previousResult.subUnitResults().get(id);
+        final IUnitResult<S, L, D, Result<S, L, D, Q, U>> subUnitPreviousResult;
+        if(isIncrementalEnabled()) {
+
+            subUnitPreviousResult =
+                    (IUnitResult<S, L, D, Result<S, L, D, Q, U>>) this.previousResult.subUnitResults().get(id);
 
 
-        // When a scope is shared, the shares must be consistent.
-        // Also, it is not necessary that shared scopes are reachable from the root scopes
-        // (A unit started by the Broker does not even have root scopes)
-        // Therefore we enforce here that the current root scopes and the previous ones match.
-        List<S> previousRootScopes = subUnitPreviousResult.rootScopes();
+            // When a scope is shared, the shares must be consistent.
+            // Also, it is not necessary that shared scopes are reachable from the root scopes
+            // (A unit started by the Broker does not even have root scopes)
+            // Therefore we enforce here that the current root scopes and the previous ones match.
+            List<S> previousRootScopes = subUnitPreviousResult.rootScopes();
 
-        int pSize = previousRootScopes.size();
-        int cSize = rootScopes.size();
-        if(cSize != pSize) {
-            logger.error("Unit {} adds subunit {} with initial state but with different root scope count.");
-            throw new IllegalStateException("Different root scope count.");
-        }
-
-        final BiMap.Transient<S> req = BiMap.Transient.of();
-        for(int i = 0; i < rootScopes.size(); i++) {
-            final S cRoot = rootScopes.get(i);
-            final S pRoot = previousRootScopes.get(i);
-            req.put(cRoot, pRoot);
-            if(isOwner(cRoot)) {
-                matchedBySharing.put(cRoot, pRoot);
+            int pSize = previousRootScopes.size();
+            int cSize = rootScopes.size();
+            if(cSize != pSize) {
+                logger.error("Unit {} adds subunit {} with initial state but with different root scope count.");
+                throw new IllegalStateException("Different root scope count.");
             }
-        }
 
-        if(isDifferEnabled()) {
-            whenDifferActivated.thenAccept(__ -> {
-                if(!differ.matchScopes(req.freeze())) {
-                    logger.error("Unit {} adds subunit {} with initial state but with different root scope count.");
-                    throw new IllegalStateException("Could not match.");
+            final BiMap.Transient<S> req = BiMap.Transient.of();
+            for(int i = 0; i < rootScopes.size(); i++) {
+                final S cRoot = rootScopes.get(i);
+                final S pRoot = previousRootScopes.get(i);
+                req.put(cRoot, pRoot);
+                if(isOwner(cRoot)) {
+                    matchedBySharing.put(cRoot, pRoot);
                 }
-            });
-        }
+            }
 
-        this.addedUnitIds.__insert(id);
+            if(isDifferEnabled()) {
+                whenDifferActivated.thenAccept(__ -> {
+                    if(!differ.matchScopes(req.freeze())) {
+                        logger.error("Unit {} adds subunit {} with initial state but with different root scope count.");
+                        throw new IllegalStateException("Could not match.");
+                    }
+                });
+            }
+
+            this.addedUnitIds.__insert(id);
+        } else {
+            subUnitPreviousResult = null;
+        }
         final IFuture<IUnitResult<S, L, D, Result<S, L, D, Q, U>>> result =
                 this.<Result<S, L, D, Q, U>>doAddSubUnit(id, (subself, subcontext) -> {
                     return new TypeCheckerUnit<S, L, D, Q, U>(subself, self, subcontext, unitChecker, edgeLabels,
@@ -447,20 +467,20 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         doCloseScope(self, scope);
     }
 
-    @Override public IFuture<Set<IResolutionPath<S, L, D>>> query(S scope, LabelWf<L> labelWF, LabelOrder<L> labelOrder,
-            DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv, @Nullable DataWf<S, L, D> dataWfInternal,
-            @Nullable DataLeq<S, L, D> dataEquivInternal) {
+    @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope, IQuery<S, L, D> query,
+            DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv, DataWf<S, L, D> dataWfInternal,
+            DataLeq<S, L, D> dataEquivInternal) {
         assertActive();
         doImplicitActivate();
 
         final ScopePath<S, L> path = new ScopePath<>(scope);
-        final IFuture<IQueryAnswer<S, L, D>> result = doQuery(self, self, true, path, labelWF, labelOrder, dataWF,
-                dataEquiv, dataWfInternal, dataEquivInternal);
+        final IFuture<IQueryAnswer<S, L, D>> result =
+                doQuery(self, self, true, path, query, dataWF, dataEquiv, dataWfInternal, dataEquivInternal);
         final IFuture<IQueryAnswer<S, L, D>> ret;
         if(result.isDone()) {
             ret = result;
         } else {
-            final Query<S, L, D> wf = Query.of(self, path, labelWF, dataWF, labelOrder, dataEquiv, result);
+            final Query<S, L, D> wf = Query.of(self, path, query, dataWF, dataEquiv, result);
             waitFor(wf, self);
             ret = result.whenComplete((env, ex) -> {
                 granted(wf, self);
@@ -481,6 +501,20 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         });
     }
 
+    @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope, LabelWf<L> labelWF,
+            LabelOrder<L> labelOrder, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
+            @Nullable DataWf<S, L, D> dataWfInternal, @Nullable DataLeq<S, L, D> dataEquivInternal) {
+        return query(scope, new NameResolutionQuery<>(labelWF, labelOrder, edgeLabels), dataWF, dataEquiv,
+                dataWfInternal, dataEquivInternal);
+    }
+
+    @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope,
+            StateMachine<L> stateMachine, LabelWf<L> labelWf, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
+            DataWf<S, L, D> dataWfInternal, DataLeq<S, L, D> dataEquivInternal) {
+        return query(scope, new StateMachineQuery<>(stateMachine, labelWf), dataWF, dataEquiv, dataWfInternal,
+                dataEquivInternal);
+    }
+
     @Override public <Q> IFuture<R> runIncremental(Function1<Optional<T>, IFuture<Q>> runLocalTypeChecker,
             Function1<R, Q> extractLocal, Function2<Q, IPatchCollection.Immutable<S>, Q> patch,
             Function2<Q, Throwable, IFuture<R>> combine) {
@@ -489,7 +523,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         if(!isIncrementalEnabled() || changed) {
             logger.debug("Unit changed or no previous result was available.");
             stateTransitionTrace = TransitionTrace.INITIALLY_STARTED;
-            doRestart();
+            doRestart(false);
             return runLocalTypeChecker.apply(Optional.empty()).compose(combine::apply);
         }
 
@@ -528,36 +562,33 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
 
         if(previousResult.queries().isEmpty()) {
             logger.debug("Releasing - no queries in previous result.");
-            doRelease(PatchCollection.Immutable.of(), PatchCollection.Immutable.of());
+            doRelease(CapsuleUtil.immutableSet(), CapsuleUtil.immutableSet(), PatchCollection.Immutable.of(),
+                    PatchCollection.Immutable.of());
             return;
         }
 
         final IConfirmation<S, L, D> confirmaton = confirmation.getConfirmation(new ConfirmationContext(self));
 
         // @formatter:off
-        final List<IFuture<SC<Tuple2<IPatchCollection.Immutable<S>, IPatchCollection.Immutable<S>>, ConfirmResult<S>>>> futures = previousResult.queries().stream()
+        final List<IFuture<SC<Boolean, Boolean>>> futures = previousResult.queries().stream()
                 .map(confirmaton::confirm)
-                .<IFuture<SC<Tuple2<IPatchCollection.Immutable<S>, IPatchCollection.Immutable<S>>, ConfirmResult<S>>>>map(intermediateFuture -> {
+                .<IFuture<SC<Boolean, Boolean>>>map(intermediateFuture -> {
                     return intermediateFuture.thenApply(intermediate -> intermediate.match(
-                        () -> SC.shortCircuit(ConfirmResult.deny()),
-                        (resultPatches, globalPatches) -> {
+                        () -> SC.shortCircuit(false),
+                        (addedQueries, removedQueries, resultPatches, globalPatches) -> {
                             // Store intermediate set of patches, to be used on deadlock.
                             this.resultPatches.putAll(resultPatches);
                             this.globalPatches.putAll(globalPatches);
-                            return SC.of(Tuple2.of(resultPatches, globalPatches));
+                            this.addedQueries.__insertAll(addedQueries);
+                            this.removedQueries.__insertAll(removedQueries);
+                            return SC.<Boolean, Boolean>of(true);
                         }
                     ));
                 }).collect(Collectors.toList());
         // @formatter:on
 
         // @formatter:off
-        AggregateFuture.ofShortCircuitable(patchCollections -> {
-            final Tuple2<IPatchCollection.Immutable<S>, IPatchCollection.Immutable<S>> aggregatedPatches = patchCollections.stream().reduce(
-                    Tuple2.of(PatchCollection.Immutable.of(), PatchCollection.Immutable.of()),
-                    (set1, set2) -> Tuple2.of(set1._1().putAll(set2._1()), set1._2().putAll(set2._2()))
-                );
-            return ConfirmResult.confirm(aggregatedPatches._1(), aggregatedPatches._2());
-        }, futures).whenComplete((r, ex) -> {
+        AggregateFuture.ofShortCircuitable(patchCollections -> true, futures).whenComplete((r, ex) -> {
                 if(ex == Release.instance) {
                     logger.debug("Confirmation received release.");
                     // Do nothing, unit is already released by deadlock resolution.
@@ -565,22 +596,24 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
                     logger.error("Failure in confirmation.", ex);
                     failures.add(ex);
                 } else {
-                    r.visit(() -> {
+                    if(r) {
+                        logger.debug("Queries confirmed - releasing.");
+                        this.doRelease(addedQueries.freeze(), removedQueries.freeze(), resultPatches.freeze(), globalPatches.freeze());
+                    } else {
                         // No confirmation, hence restart
                         logger.debug("Query confirmation denied - restarting.");
-                        if(doRestart()) {
+                        if(doRestart(true)) {
                             stateTransitionTrace = TransitionTrace.RESTARTED;
                         }
-                    }, (resultPatches, globalPatches) -> {
-                        logger.debug("Queries confirmed - releasing.");
-                        this.doRelease(resultPatches, globalPatches);
-                    });
+                    }
                 }
             });
         // @formatter:on
     }
 
-    private void doRelease(IPatchCollection.Immutable<S> resultPatches, IPatchCollection.Immutable<S> globalPatches) {
+    private void doRelease(Set.Immutable<IRecordedQuery<S, L, D>> addedQueries,
+            Set.Immutable<IRecordedQuery<S, L, D>> removedQueries, IPatchCollection.Immutable<S> resultPatches,
+            IPatchCollection.Immutable<S> globalPatches) {
         assertIncrementalEnabled();
         if(state == UnitState.UNKNOWN) {
             logger.debug("{} releasing.", this);
@@ -593,19 +626,27 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
             //   - Con: very similar to epsilon edges, which degraded performance a lot, and complicated shadowing
             // - Somehow inform differ of local edges and subunit edges, and perform diff based on those.
 
+            // Copy scopes
+            // No need to patch, because they can only be local, and local state is reused.
+            this.scopes.__insertAll(previousResult.scopes());
+
+            final IPatchCollection.Immutable<S> localPatches = matchedBySharing.freeze();
             // @formatter:off
-            final IScopeGraphDiffer<S, L, D> differ = matchedBySharing.isEmpty() ?
+            final IScopeGraphDiffer<S, L, D> differ = localPatches.isIdentity() && this.addedUnitIds.isEmpty() ?
                 new MatchingDiffer<S, L, D>(differOps(), differContext(typeChecker::internalData), resultPatches.allPatches()) :
                 new ScopeGraphDiffer<>(differContext(typeChecker::internalData), new StaticDifferContext<>(previousResult.scopeGraph(),
-                        previousResult.scopes(), new DifferDataOps()), differOps());
+                        previousResult.scopes(), new DifferDataOps()), differOps(), edgeLabels);
             // @formatter:on
-            initDiffer(differ, this.rootScopes, previousResult.rootScopes());
+
+            final Collection<S> openScopes =
+                    this.addedUnitIds.isEmpty() ? Collections.emptySet() : previousResult.rootScopes();
+            initDiffer(differ, previousResult.scopeGraph(), previousResult.scopes(),
+                    previousResult.result().sharedScopes(), localPatches, openScopes, ImmutableMultimap.of());
             if(isConfirmationEnabled()) {
                 this.envDiffer = new IndexedEnvDiffer<>(new EnvDiffer<>(envDifferContext, differOps()));
             }
 
             logger.debug("Rebuilding scope graph.");
-            final PatchCollection.Immutable<S> localPatches = PatchCollection.Immutable.of(matchedBySharing);
             // @formatter:off
             final Patcher<S, L, D> patcher = new Patcher.Builder<S, L, D>()
                 .patchSources(localPatches)
@@ -624,10 +665,6 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
                 },
                 Patcher.DataPatchCallback.noop()
             );
-
-            // Copy scopes
-            // No need to patch, because they can only be local, and local state is reused.
-            this.scopes.__insertAll(previousResult.scopes());
 
             scopeGraph.set(scopeGraph.get().addAll(patchedLocalScopeGraph));
             localScopeGraph.set(localScopeGraph.get().addAll(patchedLocalScopeGraph));
@@ -656,12 +693,20 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
             });
 
             pendingExternalDatums.asMap().forEach((d, futures) -> futures.elementSet().forEach(future -> {
-                self.complete(future, previousResult.result().analysis().getExternalRepresentation(d), null);
+                final D datum = previousResult.result().analysis().getExternalRepresentation(d);
+                final D result = context.substituteScopes(datum, resultPatches.patches().invert());
+                self.complete(future, result, null);
             }));
 
             final IPatchCollection.Immutable<S> allPatches = resultPatches.putAll(globalPatches);
-            recordedQueries.addAll(
-                    previousResult.queries().stream().map(q -> q.patch(allPatches)).collect(Collectors.toSet()));
+            java.util.Set<IRecordedQuery<S, L, D>> newRecordedQueries =
+                    previousResult.queries().stream().map(q -> q.patch(allPatches)).collect(Collectors.toSet());
+            java.util.Set<IRecordedQuery<S, L, D>> patchedRemovedQueries =
+                    removedQueries.stream().map(q -> q.patch(allPatches)).collect(Collectors.toSet());
+            newRecordedQueries.removeAll(patchedRemovedQueries);
+            newRecordedQueries.addAll(addedQueries);
+            recordedQueries.addAll(newRecordedQueries);
+
             stateTransitionTrace = TransitionTrace.RELEASED;
 
             self.complete(confirmationResult, Optional.of(resultPatches), null);
@@ -675,7 +720,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         }
     }
 
-    private boolean doRestart() {
+    private boolean doRestart(boolean external) {
         if(state == UnitState.INIT_TC || state == UnitState.UNKNOWN) {
             logger.debug("{} restarting.", this);
             state = UnitState.ACTIVE;
@@ -688,10 +733,21 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
                 if(previousResult != null) {
                     final IDifferContext<S, L, D> differContext = new StaticDifferContext<>(previousResult.scopeGraph(),
                             previousResult.scopes(), new DifferDataOps());
-                    initDiffer(new ScopeGraphDiffer<>(context, differContext, differOps), this.rootScopes,
-                            previousResult.rootScopes());
+
+                    if(external) {
+                        final StateCapture<S, L, D, T> capture = previousResult.result().localState();
+                        final java.util.Set<S> openScopes = Sets.union(capture.openScopes().elementSet(),
+                                capture.unInitializedScopes().elementSet());
+
+                        initDiffer(new ScopeGraphDiffer<>(context, differContext, differOps, edgeLabels),
+                                capture.scopeGraph(), capture.scopes(), previousResult.result().sharedScopes(),
+                                matchedBySharing.freeze(), openScopes, capture.openEdges());
+                    } else {
+                        initDiffer(new ScopeGraphDiffer<>(context, differContext, differOps, edgeLabels),
+                                this.rootScopes, previousResult.rootScopes());
+                    }
                 } else {
-                    initDiffer(new AddingDiffer<>(context, differOps), Collections.emptyList(),
+                    initDiffer(new AddingDiffer<>(context, differOps, edgeLabels), Collections.emptyList(),
                             Collections.emptyList());
                 }
                 if(isConfirmationEnabled()) {
@@ -715,7 +771,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
     private void doImplicitActivate() {
         // If invoked synchronously, do a implicit transition to ACTIVE
         // runIncremental may not be used anymore!
-        if(state == UnitState.INIT_TC && doRestart()) {
+        if(state == UnitState.INIT_TC && doRestart(false)) {
             logger.debug("{} implicitly activated.");
             this.stateTransitionTrace = TransitionTrace.INITIALLY_STARTED;
         }
@@ -736,7 +792,9 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         if(nodes.size() == 1 && !whenActive.isDone()) {
             assertInState(UnitState.UNKNOWN);
             logger.debug("{} self-deadlocked before activation, releasing", this);
-            doRelease(PatchCollection.Immutable.<S>of().putAll(externalMatches), PatchCollection.Immutable.of());
+            doRelease(CapsuleUtil.toSet(addedQueries), CapsuleUtil.toSet(removedQueries),
+                    PatchCollection.Immutable.<S>of().putAll(externalMatches),
+                    PatchCollection.Immutable.<S>of().putAll(globalPatches));
         } else if(state.active() && inLocalPhase()) {
             doCapture();
             resume();
@@ -791,28 +849,29 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
         @Override public IFuture<IQueryAnswer<S, L, D>> query(ScopePath<S, L> scopePath, LabelWf<L> labelWf,
                 LabelOrder<L> labelOrder, DataWf<S, L, D> dataWf, DataLeq<S, L, D> dataEquiv) {
             logger.debug("query from env differ.");
-            return doQuery(sender, sender, false, scopePath, labelWf, labelOrder, dataWf, dataEquiv, null, null);
+            return doQuery(sender, sender, false, scopePath, new NameResolutionQuery<>(labelWf, labelOrder, edgeLabels),
+                    dataWf, dataEquiv, null, null);
         }
 
-        @Override public IFuture<Env<S, L, D>> queryPrevious(ScopePath<S, L> scopePath, LabelWf<L> labelWf,
+        @Override public IFuture<IQueryAnswer<S, L, D>> queryPrevious(ScopePath<S, L> scopePath, LabelWf<L> labelWf,
                 DataWf<S, L, D> dataWf, LabelOrder<L> labelOrder, DataLeq<S, L, D> dataEquiv) {
             assertPreviousResultProvided();
             logger.debug("previous query from env differ.");
-            return doQueryPrevious(sender, previousResult.scopeGraph(), scopePath, labelWf, dataWf, labelOrder,
-                    dataEquiv);
+            return doQueryPrevious(sender, previousResult.scopeGraph(), scopePath,
+                    new NameResolutionQuery<>(labelWf, labelOrder, edgeLabels), dataWf, dataEquiv);
         }
 
-        @Override public IFuture<Optional<ConfirmResult<S>>> externalConfirm(ScopePath<S, L> path, LabelWf<L> labelWF,
-                DataWf<S, L, D> dataWF, boolean prevEnvEmpty) {
+        @Override public IFuture<Optional<ConfirmResult<S, L, D>>> externalConfirm(ScopePath<S, L> path,
+                LabelWf<L> labelWF, DataWf<S, L, D> dataWF, boolean prevEnvEmpty) {
             logger.debug("{} try external confirm.", this);
             final S scope = path.getTarget();
-            return getOwner(path.getTarget()).thenCompose(owner -> {
+            return getOwner(scope).thenCompose(owner -> {
                 if(owner.equals(self)) {
                     logger.debug("{} local confirm.", this);
                     return CompletableFuture.completedFuture(Optional.empty());
                 }
                 logger.debug("{} external confirm.", this);
-                final ICompletableFuture<ConfirmResult<S>> result = new CompletableFuture<>();
+                final ICompletableFuture<ConfirmResult<S, L, D>> result = new CompletableFuture<>();
                 final Confirm<S, L, D> confirm = Confirm.of(self, scope, labelWF, dataWF, result);
                 waitFor(confirm, owner);
                 self.async(owner)._confirm(path, labelWF, dataWF, prevEnvEmpty).whenComplete((v, ex) -> {
@@ -956,7 +1015,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
 
         // TODO: assert empty?
         // TODO: patch root scopes?
-        this.scopeGraph.set(snapshot.scopeGraph());
+        scopeGraph.set(snapshot.scopeGraph());
 
         final BiMap.Transient<S> scopesToProcess = BiMap.Transient.of();
         stableScopes.forEach(name -> {
@@ -983,7 +1042,7 @@ class TypeCheckerUnit<S, L, D, R extends IOutput<S, L, D>, T extends IState<S, L
             for(L label : edgeLabels) { // iterate over all labels, so that also labels for which no edge exist are properly closed.
                 for(S target : snapshot.scopeGraph().getEdges(previousScope, label)) {
                     if(!ownedScope) {
-                        final S newTarget = matchedBySharing.getValueOrDefault(target, target);
+                        final S newTarget = matchedBySharing.patch(target);
                         self.async(parent)._addEdge(currentScope, label, newTarget);
                     }
                 }

@@ -75,8 +75,11 @@ rules
           end
 
   match-terms(|tys): t -> ts
-    where if [_] := tys then
-            ts := <![<id>]> t
-          else
-            ts := <?Tuple(<id>)> t
+    where if [] := tys then
+            ts := []
+          else if [_] := tys then
+              ts := <![<id>]> t
+            else
+              ts := <?Tuple(<id>)> t
+            end
           end

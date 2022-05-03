@@ -71,6 +71,7 @@ import mb.statix.concurrent.util.VarIndexedCollection;
 import mb.statix.constraints.CArith;
 import mb.statix.constraints.CAstId;
 import mb.statix.constraints.CAstProperty;
+import mb.statix.constraints.CCompiledQuery;
 import mb.statix.constraints.CConj;
 import mb.statix.constraints.CEqual;
 import mb.statix.constraints.CExists;
@@ -83,6 +84,7 @@ import mb.statix.constraints.CTrue;
 import mb.statix.constraints.CTry;
 import mb.statix.constraints.CUser;
 import mb.statix.constraints.Constraints;
+import mb.statix.constraints.IResolveQuery;
 import mb.statix.constraints.messages.IMessage;
 import mb.statix.constraints.messages.MessageKind;
 import mb.statix.constraints.messages.MessageUtil;
@@ -609,7 +611,7 @@ public class StatixSolver {
                         fuel);
             }
 
-            @Override public Boolean caseResolveQuery(CResolveQuery c) throws InterruptedException {
+            @Override public Boolean caseResolveQuery(IResolveQuery c) throws InterruptedException {
                 final QueryFilter filter = c.filter();
                 final QueryMin min = c.min();
                 final ITerm scopeTerm = c.scopeTerm();
@@ -635,7 +637,6 @@ public class StatixSolver {
                         () -> new IllegalArgumentException("Expected scope, got " + unifier.toString(scopeTerm)));
 
                 final LabelWf<ITerm> labelWF = new RegExpLabelWf<>(filter.getLabelWF());
-                final LabelOrder<ITerm> labelOrder = new RelationLabelOrder<>(min.getLabelOrder());
                 final DataWf<Scope, ITerm, ITerm> dataWF = new ConstraintDataWF(spec, dataWfRule);
                 final DataLeq<Scope, ITerm, ITerm> dataEquiv = new ConstraintDataEquiv(spec, dataLeqRule);
                 final DataWf<Scope, ITerm, ITerm> dataWFInternal =
@@ -643,8 +644,29 @@ public class StatixSolver {
                 final DataLeq<Scope, ITerm, ITerm> dataEquivInternal =
                         LOCAL_INFERENCE ? new ConstraintDataEquivInternal(dataLeqRule) : null;
 
-                final IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> future = scopeGraph
-                        .query(scope, labelWF, labelOrder, dataWF, dataEquiv, dataWFInternal, dataEquivInternal);
+                final IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> future;
+                if((flags & Solver.FORCE_INTERP_QUERIES) == 0) {
+                    // @formatter:off
+                    future = c.match(new IResolveQuery.Cases<IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>>>() {
+
+                        @Override public IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> caseResolveQuery(CResolveQuery q) {
+                            final LabelOrder<ITerm> labelOrder = new RelationLabelOrder<>(min.getLabelOrder());
+                            return scopeGraph.query(scope, labelWF, labelOrder, dataWF, dataEquiv,
+                                    dataWFInternal, dataEquivInternal);
+                        }
+
+                        @Override public IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> caseCompiledQuery(CCompiledQuery q) {
+                            return scopeGraph.query(scope, q.stateMachine(), labelWF, dataWF, dataEquiv,
+                                    dataWFInternal, dataEquivInternal);
+                        }
+
+                    });
+                    // @formatter:on
+                } else {
+                    final LabelOrder<ITerm> labelOrder = new RelationLabelOrder<>(min.getLabelOrder());
+                    future = scopeGraph.query(scope, labelWF, labelOrder, dataWF, dataEquiv, dataWFInternal,
+                            dataEquivInternal);
+                }
 
                 final K<java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> k = (paths, ex, fuel) -> {
                     if(ex != null) {
@@ -718,7 +740,7 @@ public class StatixSolver {
                     return success(c, state, NO_UPDATED_VARS, ImmutableList.of(eq), NO_NEW_CRITICAL_EDGES,
                             NO_EXISTENTIALS, fuel);
                 } else {
-                    final Optional<TermIndex> maybeIndex = TermIndex.get(unifier.findTerm(term));
+                    final Optional<TermIndex> maybeIndex = TermIndex.find(unifier.findTerm(term));
                     if(maybeIndex.isPresent()) {
                         final ITerm indexTerm = TermOrigin.copy(term, maybeIndex.get());
                         eq = new CEqual(idTerm, indexTerm);
