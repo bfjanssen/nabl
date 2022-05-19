@@ -11,6 +11,7 @@ imports
   statix/lang/statics/constraints
   statix/lang/statics/rules
   statix/lang/statics/relations
+  statix/lang/statics/queries
   statix/lang/statics/duplicate-patterns
 
 rules
