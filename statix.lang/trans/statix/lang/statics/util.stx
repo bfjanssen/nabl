@@ -48,7 +48,8 @@ rules
       in s |-> ps.
 
   scopeOfModule(s, id) = s_mod :- {id'}
-    resolveModule(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]].
+    resolveModule(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]],
+    @id.ref := id'.
 
   // CONSTRAINTS
   declareConstraint: scope * ConstraintId * IType
@@ -74,7 +75,8 @@ rules
         in s |-> ps.
 
   typeOfConstraint(s, id) = T :- {id'}
-    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined].
+    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined],
+    @id.ref := id'.
 
   scopeOfConstraint(s, id) = startOfPathScope(p) :-
     resolveConstraint(s, id) == [(p, _)|_].
@@ -126,7 +128,8 @@ rules
         in s |-> ps.
 
   typeOfVariable(s, id) = T :- {id'}
-    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable [id] not defined].
+    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable [id] not defined],
+    @id.ref := id'.
 
   // SORTS
   declareSort: scope * SortId * TType
@@ -144,7 +147,8 @@ rules
         in s |-> ps.
 
   typeOfSort(s, id) = T :- {id'}
-    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined].
+    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined],
+    @id.ref := id'.
 
   noDuplicateImportedSorts(s, s_import) :- {ps}
     query sort
@@ -185,7 +189,8 @@ rules
         in s |-> ps.
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
-    resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined].
+    resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined],
+    @id.ref := id'.
 
   noDuplicateImportedCons(s, s_import) :- {ps}
     query cons
@@ -233,7 +238,8 @@ rules
         in s |-> ps.
 
   typeOfLabel(s, id) = T :- {id'}
-    resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined].
+    resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined],
+    @id.ref := id'.
 
   noDuplicateImportedLabels(s, s_import) :- {ps}
     query label
