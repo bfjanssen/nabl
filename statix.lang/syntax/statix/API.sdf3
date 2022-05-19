@@ -1,11 +1,11 @@
 module statix/API
 
-/* lexical */ sorts
+lexical sorts
 
   Stx-INT
   Stx-STRING
 
-/* context-free */ sorts
+context-free sorts
 
   Stx-Occurrence
   Stx-Scope
