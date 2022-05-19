@@ -36,7 +36,8 @@ signature
 
 rules // Analysis
 
-  editor-analyze = stx-editor-analyze(pre-analyze, post-analyze|"statix/lang/statics/core", "projectOk", "fileOk")
+  editor-analyze = stx-editor-analyze(pre-analyze, post-analyze, analyze-custom-unit, analyze-custom-final
+                                        |"statix/lang/statics/core", "projectOk", "fileOk")
   pre-analyze  = desugar-all; origin-track-forced(explicate-injections-Statix-Start)
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
@@ -46,6 +47,18 @@ rules // Analysis
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
        ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, _))>
+
+  analyze-custom-unit:
+      (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
+    with e* := <check-module-name(|resource)> ast
+       ; ext-c* := []
+       ; w* := <check-accidental-axioms> ast
+
+  analyze-custom-final:
+       (analysis, units) -> ([unit-e*], [unit-w*], [], ca)
+    with unit-e* := <map(?CustomUnitAnalysis(<id>, _, _));concat> units
+       ; unit-w* := <map(?CustomUnitAnalysis(_, <id>, _));concat> units
+       ; ca := CustomAnalysis([])
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
@@ -62,7 +75,7 @@ rules // Analysis
        ; w* := [ax-w*, vu-w*]
 
   nabl2-custom-analysis-final-hook(|a):
-      (resource, _, units) -> result
+      (_, _, units) -> result
     with nabl2-custom-analysis-info-msg(|"Finishing file analysis...")
        ; unit-e* := <map(?CustomUnitAnalysis(<id>, _, _));concat> units
        ; unit-w* := <map(?CustomUnitAnalysis(_, <id>, _));concat> units

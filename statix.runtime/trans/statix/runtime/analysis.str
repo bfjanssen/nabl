@@ -405,7 +405,7 @@ rules // multi file analysis
         ((resource, ast'), file-state) ->
             (resource, Full(ast'', file-analysis, [], [], []))
           with ast'' := <post> ast'
-             ; custom-file-analysis := <analyze-unit> (resource, ast', file-state)
+             ; custom-file-analysis := <analyze-unit> (resource, ast'', file-state)
              ; file-analysis := FileAnalysis(file-state, None(), custom-file-analysis)
       \})> (resource-ast'*, initial-file-state*)
       //
@@ -414,7 +414,9 @@ rules // multi file analysis
     ; initial-cached-state* := <filter(?(_, Cached(FileAnalysis(<id>, _, _))))> change*
     ; final-project-state := <stx--solve-multi-project(|spec, initial-project-state, level, progress, cancel)> [initial-file-state*, initial-cached-state*]
     ; (error*, warning*, note*) := <stx--delays-as-errors(|config);stx--extract-messages(|config)> final-project-state
-    ; (c-e*, c-w*, c-n*, custom-analysis) := <analyze-final> final-project-state
+    ; custom-analysis* := <map(?(_, Full(_, FileAnalysis(_, _, <id>), _, _, _)))> initial-file-result*
+    ; cached-custom-analysis* := <filter(?(_, Cached(FileAnalysis(_, _, <id>))))> change*
+    ; (c-e*, c-w*, c-n*, custom-analysis) := <analyze-final> (final-project-state, [custom-analysis*, cached-custom-analysis*])
     ; project-analysis := ProjectAnalysis(global-scope, global-scope-state, initial-project-state, final-project-state, custom-analysis)
     ; file-result* := <map((id, Full(id, FileAnalysis(id, !final-project-state, id), id, id, id)))> initial-file-result*
     ; switch !project-change
