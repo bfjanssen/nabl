@@ -120,14 +120,16 @@ rules
     uniqueConstraintDecls(ps, s).
 
   // VARIABLES
-  declareVariable: scope * VARID
+  declareVariable: scope * Var
   declareVariables maps declareVariable(*, list(*))
   resolveVariable: scope * VARID -> list((path * (VARID * TType)))
-  typeOfVariable: scope * VARID -> TType
+  typeOfVariable: scope * Var -> TType
   typeOfVariables maps typeOfVariable(*, list(*)) = *
 
-  declareVariable(s, id) :- {T}
+  declareVariable(s, Wld()).
+  declareVariable(s, v@Var(id)) :- {T}
      !var[id, T] in s,
+     @v.type := T,
      @id.declScope := s,
      query var
         filter e and { x :- x == id }
@@ -143,8 +145,10 @@ rules
         min $ < P
         in s |-> ps.
 
-  typeOfVariable(s, id) = T :- {p id'}
+  typeOfVariable(s, Wld()) = T.
+  typeOfVariable(s, v@Var(id)) = T :- {p id'}
     resolveVariable(s, id) == [(p,(id', T))|_] | error $[Variable [id] not defined],
+    @v.type := T,
     @id.ref := id',
     @id.declScope := startOfPathScope(p).
 
@@ -343,26 +347,26 @@ rules
   concatTermList([], ys) = ys.
   concatTermList([x|xs],ys) = [x|concatTermList(xs, ys)].
 
-  concatStringList : list(string) * list(string) -> list(string)
+  concatVarList : list(Var) * list(Var) -> list(Var)
 
-  concatStringList([], ys) = ys.
-  concatStringList([x|xs],ys) = [x|concatStringList(xs, ys)].
+  concatVarList([], ys) = ys.
+  concatVarList([x|xs],ys) = [x|concatVarList(xs, ys)].
 
   concatTTypeList : list(TType) * list(TType) -> list(TType)
 
   concatTTypeList([], ys) = ys.
   concatTTypeList([x|xs],ys) = [x|concatTTypeList(xs, ys)].
 
-  removeDuplicateVars : list(string) -> list(string)
+  removeDuplicateVars : list(Var) -> list(Var)
 
   removeDuplicateVars([]) = [].
-  removeDuplicateVars([x|xs]) = [x|removeDuplicateVars(xs')] :-
+  removeDuplicateVars([v@Var(x)|xs]) = [v|removeDuplicateVars(xs')] :-
     xs' == filterVars(xs, x).
 
-  filterVars : list(string) * string -> list(string)
+  filterVars : list(Var) * string -> list(Var)
 
   filterVars([], _) = [].
-  filterVars([id|xs], id) = filterVars(xs, id).
+  filterVars([Var(id)|xs], id) = filterVars(xs, id).
   filterVars([x|xs], f) = [x|filterVars(xs, f)].
 
   varsToStringList : list(Var) -> list(string)

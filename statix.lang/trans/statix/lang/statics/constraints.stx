@@ -20,7 +20,7 @@ rules
 
   constraintOk(s, CNew(vars)) :- {vs}
     vs == varsToStringList(vars),
-    SCOPE() == typeOfVariables(s, vs),
+    SCOPE() == typeOfVariables(s, vars),
     setEscapeProperties(s, vs).
 
   setEscapeProperties: scope * list(VARID)
@@ -60,7 +60,7 @@ rules
   constraintOk(s, CExists(vars, c)) :- {s_exists vs}
     new s_exists, s_exists -P-> s,
     vs == varsToStringList(vars),
-    declareVariables(s_exists, vs),
+    declareVariables(s_exists, vars),
     declareVarBarriers(s_exists, vs, getBarrier(s)),
     constraintOk(s_exists, c).
 
@@ -71,9 +71,8 @@ rules
   constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
     try { false } | warning "Are you sure you want to assign a property to a wildcard?",
     _ == termOk(s, t).
-  constraintOk(s, CAstProperty(Var2TermOrTermIndex(v@Var(var)), _, _, t)) :- {T}
-    T == typeOfVariable(s, var),
-    @v.type := T,
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(v@Var(_)), _, _, t)) :- {T}
+    T == typeOfVariable(s, v),
     _ == termOk(s, t).
 
   constraintOk(s, CArith(e1, _, e2, msg)) :-
@@ -117,8 +116,8 @@ rules
   messageOriginOk(_, Origin(Wld())) :-
     try { false } | warning "Are you sure you want to use a wildcard as message origin?".
 
-  messageOriginOk(s, Origin(Var(var))) :-
-    _ == typeOfVariable(s, var).
+  messageOriginOk(s, Origin(v@Var(_))) :-
+    _ == typeOfVariable(s, v).
 
   kindToString : MessageKind -> string
 

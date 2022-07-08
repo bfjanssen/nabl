@@ -54,7 +54,7 @@ rules
     declareBarrier(s_hc),
     vars == removeDuplicateVars(patternsOk(s_hc, args, TS)),
     declareVariables(s_hc, vars),
-    declareVarBarriers(s, vars, getBarrier(s)),
+    declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
     constraintOk(s_hc, cnstrnt),
     @a.type := PRED(TS).
 

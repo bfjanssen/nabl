@@ -18,11 +18,10 @@ rules
   termOk(_, Str2Term(a@Str(_))) = STRING() :-
     @a.type := STRING().
 
-  termOk(_, Var2Term(a@Wld())) = T :-
-    @a.type := T.
-  termOk(s, Var2Term(a@Var(var))) = T :-
-    T == typeOfVariable(s, var),
-    @a.type := T,
+  termOk(_, Var2Term(w@Wld())) = T :-
+    @w.type := T.
+  termOk(s, Var2Term(v@Var(var))) = T :-
+    T == typeOfVariable(s, v),
     @var.escape := scopeIsEqual(getBarrier(s), getVarBarrier(s, var)).
 
   termOk(s, a@List(xs)) = LIST(T) :-
@@ -54,11 +53,10 @@ rules
     @a.type := T,
     @w.type := T,
     try { false } | warning "Are you sure you want to ascribe to a wildcard?".
-  termOk(s, a@As(v@Var(var), term)) = T :-
-    T == typeOfVariable(s, var),
+  termOk(s, a@As(v@Var(_), term)) = T :-
+    T == typeOfVariable(s, v),
     T == termOk(s, term),
-    @a.type := T,
-    @v.type := T.
+    @a.type := T.
 
   termOk(s, a@Ascribe(term, ty)) = T :-
     T == termOk(s, term),
@@ -93,9 +91,8 @@ rules
 
   arithExpOk(_, Var2ArithExp(a@Wld())) :-
     @a.type := INT().
-  arithExpOk(s, Var2ArithExp(a@Var(var))) :-
-    typeOfVariable(s, var) == INT(),
-    @a.type := INT().
+  arithExpOk(s, Var2ArithExp(v@Var(_))) :-
+    typeOfVariable(s, v) == INT().
 
   arithExpOk(s, AAdd(e1, e2)) :-
     arithExpOk(s, e1),
