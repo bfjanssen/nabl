@@ -4,6 +4,8 @@ imports
 
   nabl2/api
 
+  statix/api
+
   signatures/statix/lang/-
   statix/lang/-
   statix/lang/statics/-
@@ -13,11 +15,11 @@ imports
 
 rules
 
-  ext-get-constraint-ref: x -> ExtRef(<nabl2-mk-occurrence(|"C")> x)
+  ext-get-constraint-ref: x -> ExtRef(ConstraintRef(x))
 
-  ext-get-var-ref: x -> ExtRef(<nabl2-mk-occurrence(|"Var")> x)
+  ext-get-var-ref: x -> ExtRef(VarRef(x))
 
-  ext-get-var-decl: x -> ExtDecl(<nabl2-mk-occurrence(|"Var")> x)
+  ext-get-var-decl: x -> ExtDecl(BasicDecl(x))
 
 
 rules
@@ -33,11 +35,15 @@ rules
   ext-escape-constraint(|a): ExtRequires(v, s, o) -> ExtRequiresEsc(v, s, o)
     where <ext-var-escapes(|a)> v
 
-  ext-var-escapes(|a): ExtVar(ExtRef(r)) -> <id>
+  ext-var-escapes-legacy(|a): ExtVar(ExtRef(r)) -> <id>
     where (d, _) := <nabl2-get-resolved-name(|a)> r
         ; s_r := <nabl2-get-property(|a, "barrier")> r
         ; s_d := <nabl2-get-property(|a, "barrier")> d
         ; <not(eq)> (s_r, s_d)
+
+  ext-var-escapes(|a): ExtVar(ExtRef(VarRef(r))) -> <id>
+    where esc := <stx-get-ast-property(|a, "escape")> r
+        ; <raw-eq> (esc, 0)
 
   ext-path-scopes = nabl2-get-path-scopes; init
 
@@ -47,17 +53,31 @@ rules
   // occurrences, but get the real declaration from the ast using the index
   // in the initial occurrence.
 
-  ext-explicate-set(|a): ExtDecl(d) -> ExtDecl(d')
+  ext-explicate-set(|a): ExtDecl(BasicDecl(x)) -> ExtDecl(ScopedDecl(x, s))
+    where s := <stx-get-ast-property(|a, "declScope")> x
+
+  ext-explicate-set(|a): ExtRef(ConstraintRef(r)) -> ExtDecl(BasicDecl(d))
+    where d := <stx-get-ast-ref(|a)> r
+
+  ext-explicate-set(|a): ExtRef(VarRef(r)) -> ExtDecl(ScopedDecl(d, s))
+    where d := <stx-get-ast-ref(|a)> r
+        ; s := <stx-get-ast-property(|a, "declScope")> r
+
+  ext-explicate-set-legacy(|a): ExtDecl(d) -> ExtDecl(d')
     where i := <nabl2-get-occurrence-index> d
         ; t := <nabl2-set-ast-index(|i)> ()
         ; d' := <nabl2-get-ast-property(|a, "decl")> t
 
-  ext-explicate-set(|a): ExtRef(r) -> ExtDecl(d)
+  ext-explicate-set-legacy(|a): ExtRef(r) -> ExtDecl(d)
     where i := <nabl2-get-occurrence-index> r
         ; t := <nabl2-set-ast-index(|i)> ()
         ; d := <nabl2-get-ast-property(|a, "decl")> t
 
 
-  ext-get-name: ExtRef(o) -> <nabl2-get-occurrence-name> o
+  ext-get-name: ExtRef(ConstraintRef(x)) -> x
 
-  ext-get-name: ExtDecl(o) -> <nabl2-get-occurrence-name> o
+  ext-get-name: ExtRef(VarRef(x)) -> x
+
+  ext-get-name: ExtDecl(BasicDecl(x)) -> x
+
+  ext-get-name: ExtDecl(ScopedDecl(x, _)) -> x

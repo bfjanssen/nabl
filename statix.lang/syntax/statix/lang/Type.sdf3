@@ -43,8 +43,16 @@ sorts
 
   ExtOrigin // custom prettyprint rule in statix/lang/scope-extension.str
 
+lexical sorts
+
+  Scope-String
+
+lexical syntax
+
+  Scope-String = []
+
 context-free sorts
-  ExtConstraints ExtConstraint ExtSets ExtSet ExtId ExtLabel ExtEqs ExtEq ExtOp
+  ExtConstraints ExtConstraint ExtSets ExtSet ExtId ExtLabel ExtEqs ExtEq ExtOp ExtDecl ExtRef
 
 context-free syntax
 
@@ -66,8 +74,14 @@ context-free syntax
   ExtSet.ExtNone  = "0"
 
 
-  ExtId.ExtRef  = <ref <NaBL2Occurrence>>
-  ExtId.ExtDecl = <decl <NaBL2Occurrence>>
+  ExtId.ExtDecl = <decl <ExtDecl>>
+  ExtId.ExtRef  = <ref <ExtRef>>
+
+  ExtDecl.BasicDecl = <<VARID>>
+  ExtDecl.ScopedDecl = <<VARID> <Scope-String>>
+
+  ExtRef.VarRef = <<VARID>>
+  ExtRef.ConstraintRef = <<ConstraintId>>
 
 
   ExtLabel = RelRef

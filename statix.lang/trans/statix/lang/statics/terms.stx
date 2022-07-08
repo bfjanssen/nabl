@@ -22,7 +22,8 @@ rules
     @a.type := T.
   termOk(s, Var2Term(a@Var(var))) = T :-
     T == typeOfVariable(s, var),
-    @a.type := T.
+    @a.type := T,
+    @var.escape := scopeIsEqual(getBarrier(s), getVarBarrier(s, var)).
 
   termOk(s, a@List(xs)) = LIST(T) :-
     T == listTermOk(s, xs),

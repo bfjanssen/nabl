@@ -17,7 +17,7 @@ signature
     DerivedC  : CKind
 
   relations
-    mod         :   ModuleId -> scope
+    mod         :   ModuleId * scope
     predicate   :   ConstraintId -> IType
     var         :   VARID -> TType
     sort        :   SortId -> TType
@@ -28,6 +28,9 @@ signature
 
     rulePattern :   ConstraintId -> (list(Term) * scope)
 
+    barrier     :   scope
+    varBarrier  :   VARID -> scope
+
   name-resolution
     labels P I
 
@@ -35,21 +38,31 @@ signature
 rules
   // MODULES
   declareModule: scope * ModuleId * scope
-  resolveModule: scope * ModuleId -> list((path * (ModuleId * scope)))
+  resolveModuleScopes: scope * ModuleId -> list((path * (ModuleId * scope)))
+  resolveModuleNames: scope * scope -> list((path * (ModuleId * scope)))
   scopeOfModule: scope * ModuleId -> scope
+  moduleOfScope: scope * scope -> ModuleId
 
   declareModule(s, id, s_mod) :-
     !mod[id, s_mod] in s,
-    resolveModule(s, id) == [_] | error $[Duplicate module [id]].
+    resolveModuleScopes(s, id) == [_] | error $[Duplicate module [id]].
 
-  resolveModule(s, id) = ps :-
+  resolveModuleScopes(s, id) = ps :-
     query mod
-      filter P* and { x :- x == id }
+      filter P* and { (x, _) :- x == id }
+      in s |-> ps.
+
+  resolveModuleNames(s, s_mod) = ps :-
+    query mod
+      filter P* and { (_, y) :- y == s_mod }
       in s |-> ps.
 
   scopeOfModule(s, id) = s_mod :- {id'}
-    resolveModule(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]],
+    resolveModuleScopes(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]],
     @id.ref := id'.
+
+  moduleOfScope(s, s_mod) = id :-
+    resolveModuleNames(s, s_mod) == [(_,(id, _))|_].
 
   // CONSTRAINTS
   declareConstraint: scope * ConstraintId * IType
@@ -113,6 +126,7 @@ rules
 
   declareVariable(s, id) :- {T}
      !var[id, T] in s,
+     @id.declScope := s,
      query var
         filter e and { x :- x == id }
         in s |-> [_] | error $[Duplicate variable [id]],
@@ -127,9 +141,10 @@ rules
         min $ < P
         in s |-> ps.
 
-  typeOfVariable(s, id) = T :- {id'}
-    resolveVariable(s, id) == [(_,(id', T))|_] | error $[Variable [id] not defined],
-    @id.ref := id'.
+  typeOfVariable(s, id) = T :- {p id'}
+    resolveVariable(s, id) == [(p,(id', T))|_] | error $[Variable [id] not defined],
+    @id.ref := id',
+    @id.declScope := startOfPathScope(p).
 
   // SORTS
   declareSort: scope * SortId * TType
@@ -282,6 +297,29 @@ rules
     query rulePattern
         filter I* and { x :- x == id }
         in s |-> ps.
+
+  // BARRIERS
+  declareBarrier: scope
+  getBarrier: scope -> scope
+
+  declareBarrier(s) :-
+    !barrier[s] in s.
+
+  getBarrier(s) = s_barrier :-
+    query barrier filter P* min $ < P in s |-> [(_, s_barrier)|_].
+
+  declareVarBarrier: scope * VARID * scope
+  declareVarBarriers maps declareVarBarrier(*, list(*), *)
+  getVarBarrier: scope * VARID -> scope
+
+  declareVarBarrier(s, id, s_barrier) :-
+    !varBarrier[id, s_barrier] in s.
+
+  getVarBarrier(s, id) = s_barrier :-
+    query varBarrier
+      filter P* and { x :- x == id }
+      min $ < P
+      in s |-> [(_, (_, s_barrier))|_].
 
 // Utility
 rules

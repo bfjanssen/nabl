@@ -18,8 +18,16 @@ rules
     constraintOk(s, l),
     constraintOk(s, r).
 
-  constraintOk(s, CNew(vars)) :-
-    SCOPE() == typeOfVariables(s, varsToStringList(vars)).
+  constraintOk(s, CNew(vars)) :- {vs}
+    vs == varsToStringList(vars),
+    SCOPE() == typeOfVariables(s, vs),
+    setEscapeProperties(s, vs).
+
+  setEscapeProperties: scope * list(VARID)
+
+  setEscapeProperties(_, []).
+  setEscapeProperties(s, [var|tl]) :-
+    @var.escape := scopeIsEqual(getBarrier(s), getVarBarrier(s, var)).
 
   constraintOk(s, CTellEdge(t1, Label(l), t2)) :-
     SCOPE() == termOk(s, t1),
@@ -45,12 +53,15 @@ rules
 
   constraintOk(s, CTry(c, msg)) :- {s_try}
     new s_try, s_try -P-> s,
+    declareBarrier(s_try),
     constraintOk(s_try, c),
     tryMessageOk(s, msg).
 
-  constraintOk(s, CExists(vars, c)) :- {s_exists}
+  constraintOk(s, CExists(vars, c)) :- {s_exists vs}
     new s_exists, s_exists -P-> s,
-    declareVariables(s_exists, varsToStringList(vars)),
+    vs == varsToStringList(vars),
+    declareVariables(s_exists, vs),
+    declareVarBarriers(s_exists, vs, getBarrier(s)),
     constraintOk(s_exists, c).
 
   constraintOk(s, CAstId(t1, t2)) :-

@@ -33,6 +33,7 @@ rules
 
   ruleOk(s, Rule(_, head, cnstrnt)) :- {s_rule}
     new s_rule, s_rule -P-> s,
+    declareBarrier(s_rule),
     ruleHeadOk(s_rule, head, s),
     constraintOk(s_rule, cnstrnt).
 
@@ -43,6 +44,7 @@ rules
     DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
     vars == removeDuplicateVars(patternsOk(s, args, TS)),
     declareVariables(s, vars),
+    declareVarBarriers(s, vars, getBarrier(s)),
     s_decl == scopeOfConstraint(s, id),
     declarePattern(s_mod, id, args, s_decl),
     noDuplicatePatterns(s_mod, id, args, s_decl, a),
@@ -55,6 +57,7 @@ rules
     vs2 == patternOk(s, result, RT),
     vars == removeDuplicateVars(concatStringList(vs1, vs2)),
     declareVariables(s, vars),
+    declareVarBarriers(s, vars, getBarrier(s)),
     s_decl == scopeOfConstraint(s, id),
     declarePattern(s_mod, id, args, s_decl),
     noDuplicatePatterns(s_mod, id, args, s_decl, a),
@@ -203,6 +206,7 @@ rules
     (LTS, num) == liftsToTypes(lifts, TS),
     num #> 0 | error "At least one argument must be lifted.",
     declareConstraint(s, id, PRED(LTS)),
+    @id.ref := id,
     setCKind(s, id, DerivedC()),
     @id.type := PRED(LTS),
     @mid.type := PRED(TS).
@@ -213,6 +217,7 @@ rules
     num #> 0 | error "At least one argument must be lifted.",
     (LRT, _) == liftToType(outLift, RT),
     declareConstraint(s, id, FUN(LTS, LRT)),
+    @id.ref := id,
     setCKind(s, id, DerivedC()),
     @id.type := FUN(LTS, LRT),
     @mid.type := FUN(TS, RT).

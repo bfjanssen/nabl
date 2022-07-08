@@ -51,8 +51,10 @@ rules
 
   hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
     new s_hc, s_hc -P-> s,
+    declareBarrier(s_hc),
     vars == removeDuplicateVars(patternsOk(s_hc, args, TS)),
     declareVariables(s_hc, vars),
+    declareVarBarriers(s, vars, getBarrier(s)),
     constraintOk(s_hc, cnstrnt),
     @a.type := PRED(TS).
 
