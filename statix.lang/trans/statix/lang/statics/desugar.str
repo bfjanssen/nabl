@@ -82,15 +82,15 @@ rules
 
   desugar-queries = bottomup(try(desugar-query))
 
-  desugar-query: NoFilter() -> Filter(Neg(Empty()), LTrue())
-  desugar-query: Filter(wf) -> Filter(wf, LTrue())
+  desugar-query: NoFilter(){a*} -> Filter(Neg(Empty()), LTrue(){a*}){a*}
+  desugar-query: Filter(wf){a*} -> Filter(wf, LTrue(){a*}){a*}
   desugar-query: Filter_dep(wf) -> Filter(wf, LTrue())
   desugar-query: Filter_dep(wf, l) -> Filter(wf, l)
   desugar-query: NamespaceFilter_dep(wf) -> NamespaceFilter(wf)
   desugar-query: NoNamespaceFilter() -> NamespaceFilter(Neg(Empty()))
 
-  desugar-query: NoMin() -> Min([], LTrue())
-  desugar-query: Min(ord) -> Min(ord, LTrue())
+  desugar-query: NoMin(){a*} -> Min([], LTrue(){a*}){a*}
+  desugar-query: Min(ord){a*} -> Min(ord, LTrue(){a*}){a*}
   desugar-query: Min_dep(ord) -> Min(ord, LTrue())
   desugar-query: Min_dep(ord, l) -> Min(ord, l)
   desugar-query: NamespaceMin_dep(ord) -> NamespaceMin(ord)
@@ -117,6 +117,5 @@ rules
 rules
 
   desugar-explicit-ids = topdown(try(desugar-explicit-id))
-  
-  desugar-explicit-id: NoIdExplicit() -> NoId()  
-  
+
+  desugar-explicit-id: NoIdExplicit() -> NoId()
