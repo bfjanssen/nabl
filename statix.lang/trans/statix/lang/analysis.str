@@ -51,14 +51,17 @@ rules // Analysis
   analyze-custom-unit:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
     with e* := <check-module-name(|resource)> ast
-       ; ext-c* := []
+       ; ext-c* := <collect-ext-constraints> ast
        ; w* := <check-accidental-axioms> ast
 
   analyze-custom-final:
-       (analysis, units) -> ([unit-e*], [unit-w*], [], ca)
+       (analysis, units) -> ([unit-e*, ext-e*], [unit-w*], [], ca)
     with unit-e* := <map(?CustomUnitAnalysis(<id>, _, _));concat> units
        ; unit-w* := <map(?CustomUnitAnalysis(_, <id>, _));concat> units
-       ; ca := CustomAnalysis([])
+       ; ext-c*  := <map(?CustomUnitAnalysis(_, _, <id>));concat> units
+       ; ext-c'* := <explicate-ext-constraints(|analysis)> ext-c*
+       ; (ext, ext-e*) := <solve-ext-constraints> ext-c'*
+       ; ca := CustomAnalysis(ext)
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
