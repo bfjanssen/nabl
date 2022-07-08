@@ -573,6 +573,10 @@ rules
     stx--get-ast-resource
   ; stx--get-resource-analysis(stx--get-analysis)
 
+  stx--get-custom-final-analysis: _ -> custom-analysis
+    with custom-analysis := <stx--get-resource-analysis(stx--get-custom-analysis)> "."
+
+
   stx--get-ast-result =
     stx--get-ast-resource
   ; stx--get-resource-analysis(stx--get-result)
@@ -597,7 +601,10 @@ rules
 
   stx--get-custom-file-analysis = ?FileAnalysis(_, _, <id>)
 
-  stx--get-custom-analysis = ?ProjectAnalysis(_, _, _, _, <id>) + ?ProjectAnalysis(_, _, <id>)
+  stx--get-custom-analysis =
+     ( ?ProjectAnalysis(_, _, _, _, <id>)
+    <+ ?ProjectAnalysis(_, _, <id>)
+     )
 
   stx--is-debug-custom-enabled =
     prim("SG_is_debug_custom_enabled")

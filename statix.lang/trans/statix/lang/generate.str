@@ -10,6 +10,8 @@ imports
 
   nabl2/api
 
+  statix/api
+
   signatures/statix/lang/-
   pp/statix/lang/-
   statix/lang/analysis
@@ -17,6 +19,9 @@ imports
   statix/lang/precompile
 
   statix/runtime/analysis
+
+  //TEMP should change
+  statix/lang/normalize/util
 
 signature
   constructors
@@ -26,7 +31,7 @@ rules
 
   generate-aterm:
       (_, _, ast@Module(name, _), path, project-path) -> result
-    where a := <nabl2-get-resource-analysis> $[[project-path]/[path]]
+    where a := <stx-get-ast-analysis> ast
     with filename := <stx--module-path> name
        ; if spec := <generate-aterm'(|a)> ast then
            result := (filename, spec)
@@ -36,8 +41,8 @@ rules
 
   generate-aterm'(|a):
       ast@Module(_, _) -> spec
-    with ast' := <normalize(|a); precompile(|a)> ast
-       ; CustomAnalysis(ext) := <nabl2-get-custom-analysis> a
+    with ast' := <normalize(|a)> ast
+       ; CustomAnalysis(ext) := <stx--get-custom-final-analysis>
        ; spec     := <core-ast-to-spec-aterm(|a)> (ast', ext)
 
 rules
@@ -58,10 +63,16 @@ rules
        ; ext' := <filter((get-qname(|a), id, try(qualify-name(|a))));remove-term-annos> ext
        ; spec := FileSpec(import*, edge*, data*, EOP(), rule*, ext')
 
-  remove-term-annos =
+  remove-term-annos-legacy =
     bottomup(try(
         (is-Statix-Var + is-Statix-Term + is-Statix-Int + is-Statix-Str)
       ; add-annotation(|OfSort(<nabl2-get-anno-type; bottomup(try(nabl2-get-occurrence-name)); strip-annos>))
+    ) ; remove-annotations(not(?OfSort(_))))
+
+  remove-term-annos =
+    bottomup(try(
+        (is-Statix-Var + is-Statix-Term + is-Statix-Int + is-Statix-Str)
+      ; add-annotation(|OfSort(<stx-get-anno-type; strip-annos>))
     ) ; remove-annotations(not(?OfSort(_))))
 
   empty-spec = !FileSpec([], [], [], EOP(), [], [])
@@ -76,10 +87,18 @@ rules
 //qualify-name(|a) = SimpleSort(get-qname(|a))
 //qualify-name(|a) = Op(get-qname(|a), id)
 
-  get-qname(|a): x -> <stx--mk-qualified-name(|qname)> name
+  get-qname-legacy(|a): x -> <stx--mk-qualified-name(|qname)> name
     where d := <nabl2-get-ast-property(|a, "decl")> x
         ; name := <nabl2-get-occurrence-name> d
         ; qname := <nabl2-get-property(|a, "qname")> d
+
+  get-qname(|a): x -> y
+    where qname := <stx-get-ast-property(|a, "qname")> x ;
+          if "TEST" := qname then
+             y := x
+          else
+             y := <stx--mk-qualified-name(|qname)> x
+          end
 
 rules
 

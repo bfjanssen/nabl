@@ -79,7 +79,8 @@ rules
     try { query predicate
             filter I+ and { x :- x == id }
             in s |-> []
-    } | warning $[Shadowing imported constraint [id]].
+    } | warning $[Shadowing imported constraint [id]],
+    @id.qname := moduleOfScope(s, s).
 
   resolveConstraint(s, id) = ps :-
     query predicate
@@ -87,9 +88,10 @@ rules
         min $ < I
         in s |-> ps.
 
-  typeOfConstraint(s, id) = T :- {id'}
-    resolveConstraint(s, id) == [(_,(id', T))|_] | error $[Constraint [id] not defined],
-    @id.ref := id'.
+  typeOfConstraint(s, id) = T :- {id' p}
+    resolveConstraint(s, id) == [(p, (id', T))|_] | error $[Constraint [id] not defined],
+    @id.ref := id',
+    @id.qname := moduleOfScope(s, startOfPathScope(p)).
 
   scopeOfConstraint(s, id) = startOfPathScope(p) :-
     resolveConstraint(s, id) == [(p, _)|_].
@@ -252,9 +254,10 @@ rules
         min $ < I
         in s |-> ps.
 
-  typeOfLabel(s, id) = T :- {id'}
-    resolveLabel(s, id) == [(_, (id', T))|_] | error $[Label [id] not defined],
-    @id.ref := id'.
+  typeOfLabel(s, id) = T :- {id' p}
+    resolveLabel(s, id) == [(p, (id', T))|_] | error $[Label [id] not defined],
+    @id.ref := id',
+    @id.qname := moduleOfScope(s, startOfPathScope(p)).
 
   noDuplicateImportedLabels(s, s_import) :- {ps}
     query label

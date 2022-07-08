@@ -15,12 +15,14 @@ rules
 
   relDeclOk(s, RelDecl(Label(rel), a@SimpleType(tys))) :- {TS}
     TS == sortRefsToTypes(s, tys),
+    @rel.qname := moduleOfScope(s, s),
     declareLabel(s, rel, RELATION(PRED(TS))),
     @a.type := PRED(TS).
 
   relDeclOk(s, RelDecl(Label(rel), a@FunType(tys, rty))) :- {TS RT}
     TS == sortRefsToTypes(s, tys),
     RT == sortRefToType(s, rty),
+    @rel.qname := moduleOfScope(s, s),
     declareLabel(s, rel, RELATION(FUN(TS, RT))),
     @a.type := FUN(TS, RT).
 
@@ -34,6 +36,7 @@ rules
   declareLabels(s, []).
   declareLabels(s, [Label(l)|xs]) :-
     declareLabel(s, l, EDGE()),
+    @l.qname := moduleOfScope(s, s),
     declareLabels(s, xs).
 
   edgeRefOk: scope * EdgeRef
