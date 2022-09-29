@@ -10,3 +10,11 @@ menus
 
     action: "Generate ATerm" = generate-aterm
     action: "Generate Combined ATerm" = generate-combined-aterm
+
+    separator
+
+    action: "Generate ATerm (legacy)" = generate-aterm-legacy
+
+    separator
+
+    action: "Compare ATerms" = compare-aterms

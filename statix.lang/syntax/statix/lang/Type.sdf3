@@ -83,6 +83,8 @@ context-free syntax
   ExtRef.VarRef = <<VARID>>
   ExtRef.ConstraintRef = <<ConstraintId>>
 
+  ExtId.LegDecl = <decl <NaBL2Occurrence>>
+  ExtId.LegRef = <ref <NaBL2Occurrence>>
 
   ExtLabel = RelRef
   ExtLabel = EdgeRef

@@ -51,6 +51,16 @@ rules // Analysis
          filename := <guarantee-extension(|$[analyzed.[ext]])> path;
          result   := <rename-module(|"analyzed");pp-Statix-string> ast
 
+rules //Annotated
+  show-annotated-aterm: (_, _, _, path, project-path) -> (filename, result)
+    where ast := <get-annotated-ast>
+    with filename := <guarantee-extension(|"annotated.aterm")> path;
+         result   := <rename-module(|"annotated");nabl2-simplify-ast-indices> ast
+
+  get-annotated-ast: (_, _, ast, path, project-path) -> ast'
+    where a := <stx-get-ast-analysis> ast
+    with ast' := <stx-add-anno-types(|a)> ast
+
 rules // Normalization
   show-normalized-aterm: (_, _, _, path, project-path) -> (filename, result)
     where ast := <get-normalized-ast>
@@ -83,6 +93,18 @@ rules // Normalization Legacy
   get-normalized-ast-legacy: (_, _, _, path, project-path) -> ast'
     where (ast, a) := <legacy-analyze> $[[project-path]/[path]]
     with ast' := <normalize-legacy(|a)> ast
+
+  compare-normalized-ast: (_, _, ast-stx, path, project-path) -> (filename, result)
+     where norm-ast-nabl := <get-normalized-ast-legacy;bottomup(try(remove-annotations))>;
+           a-stx := <stx-get-ast-analysis> ast-stx;
+           norm-ast-stx := <normalize(|a-stx);bottomup(try(remove-annotations))> ast-stx
+     with filename := <guarantee-extension(|"unification.txt")> path;
+          if unification := <unify(?Var(_))> [(norm-ast-stx, norm-ast-nabl)] then
+            result := <rename-module(|"unification")> unification
+          else
+            result := <rename-module(|"unification")> "Unification failed"
+          end
+
 
 rules // Precompilation
 
@@ -118,3 +140,19 @@ rules // Explicit signature rules
     where a := <nabl2-get-resource-analysis> $[[project-path]/[path]];
           <not(nabl2-analysis-has-errors)> a
     with ast' := <add-signature-rules(|a)> ast
+
+rules //Compare Aterms
+
+  compare-aterms:
+      (_, _, ast-stx@Module(name, _), path, project-path) -> (filename, result)
+    where a-stx := <stx-get-ast-analysis> ast-stx;
+          (ast-nabl, a-nabl) := <legacy-analyze> $[[project-path]/[path]]
+    with  FileSpec(_, _, _, _, rules*, _) := <generate-aterm'(|a-stx)> ast-stx;
+          FileSpec(_, _, _, _, legacy-rules*, _) := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
+          filename := <guarantee-extension(|"unification.txt")> path;
+          if unification := <unify(?Var(_))> [(rules*, legacy-rules*)] then
+            result := <rename-module(|"unification")> unification
+          else
+            result := <rename-module(|"unification")> "Unification failed"
+          end
+

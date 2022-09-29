@@ -30,6 +30,7 @@ menus
 
     action: "Show analyzed AST"         = show-analyzed-aterm
     action: "Format analyzed AST"       = format-analyzed
+    action: "Show annotated AST"        = show-annotated-aterm
 
     separator
 
@@ -38,6 +39,10 @@ menus
 
     action: "Show normalized AST (legacy)"   = show-normalized-aterm-legacy (source)
     action: "Format normalized AST (legacy)" = format-normalized-legacy (source)
+
+    separator
+
+    action: "Compare normalized AST" = compare-normalized-ast
 
     separator
 
