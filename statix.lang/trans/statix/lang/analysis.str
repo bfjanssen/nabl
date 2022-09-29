@@ -19,6 +19,7 @@ imports
   statix/lang/statics/-
 
   statix/runtime/pp
+  statix/runtime/services
   statixruntime
   statix/api
 
@@ -46,7 +47,9 @@ rules // Analysis
        ; file* := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
-       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, _))>
+       ; <debug> path
+       ; <map(Fst);debug> results
+       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, <id>))> results
 
   analyze-custom-unit:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
@@ -68,7 +71,7 @@ rules // Analysis
     with nabl2-custom-analysis-info-msg(|"Extra file analysis...")
        ; n-e* := <check-module-name(|resource)> ast
        ; nabl2-custom-analysis-info-msg(|"| collecting scope extensions...")
-       ; ext-c* := <collect-ext-constraints> ast
+       ; ext-c* := <collect-ext-constraints-legacy> ast
        ; nabl2-custom-analysis-info-msg(|"| detecting accidental axioms...")
        ; ax-w* := <check-accidental-axioms> ast
      //; nabl2-custom-analysis-info-msg(|"| checking variable usage...")
@@ -92,7 +95,7 @@ rules // Analysis
        ; or-e* := <detect-overlapping-rules(|a)>
        ; ext-c* := <map(?CustomUnitAnalysis(_, _, <id>));concat> units
        ; nabl2-custom-analysis-info-msg(|"| explicate scope extensions...")
-       ; ext-c'* := <explicate-ext-constraints(|a)> ext-c*
+       ; ext-c'* := <explicate-ext-constraints-legacy(|a)> ext-c*
        ; <ext-log(prettyprint-Statix-ExtConstraints|"Extension constraints:")> ext-c'*
        ; nabl2-custom-analysis-info-msg(|"| solve scope extensions...")
        ; (ext, ext-e*) := <solve-ext-constraints> ext-c'*

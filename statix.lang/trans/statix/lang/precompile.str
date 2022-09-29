@@ -8,3 +8,6 @@ rules
 
   precompile(|a) =
     precompile-queries(|a)
+
+  precompile-legacy(|a) =
+    precompile-queries-legacy(|a)

@@ -16,7 +16,13 @@ rules
     collect-all(ext-constraints, conc)
   ; concat
 
+  collect-ext-constraints-legacy =
+    collect-all(ext-constraints-legacy, conc)
+  ; concat
+
   explicate-ext-constraints(|a) = fail
+
+  explicate-ext-constraints-legacy(|a) = fail
 
   solve-ext-constraints = fail
 

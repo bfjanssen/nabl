@@ -21,13 +21,28 @@ rules
 
   ext-get-var-decl: x -> ExtDecl(BasicDecl(x))
 
+  ext-get-constraint-ref-legacy: x -> LegRef(<nabl2-mk-occurrence(|"C")> x)
+
+  ext-get-var-ref-legacy: x -> LegRef(<nabl2-mk-occurrence(|"Var")> x)
+
+  ext-get-var-decl-legacy: x -> LegDecl(<nabl2-mk-occurrence(|"Var")> x)
+
 
 rules
+
+  explicate-ext-constraints-legacy(|a): c* -> c''*
+    with c'* := <map(try(ext-escape-constraint-legacy(|a)))> c*
+       ; c''* := <map(topdown(try(ext-explicate-set-legacy(|a))))> c'*
 
   explicate-ext-constraints(|a): c* -> c''*
     with c'* := <map(try(ext-escape-constraint(|a)))> c*
        ; c''* := <map(topdown(try(ext-explicate-set(|a))))> c'*
 
+  ext-escape-constraint-legacy(|a): ExtProvides(v, s, o) -> ExtProvidesEsc(v, s, o)
+    where <ext-var-escapes-legacy(|a)> v
+
+  ext-escape-constraint-legacy(|a): ExtRequires(v, s, o) -> ExtRequiresEsc(v, s, o)
+    where <ext-var-escapes-legacy(|a)> v
 
   ext-escape-constraint(|a): ExtProvides(v, s, o) -> ExtProvidesEsc(v, s, o)
     where <ext-var-escapes(|a)> v
@@ -81,3 +96,7 @@ rules
   ext-get-name: ExtDecl(BasicDecl(x)) -> x
 
   ext-get-name: ExtDecl(ScopedDecl(x, _)) -> x
+
+  ext-get-name: LegRef(o) -> <nabl2-get-occurrence-name> o
+
+  ext-get-name: LegDecl(o) -> <nabl2-get-occurrence-name> o
