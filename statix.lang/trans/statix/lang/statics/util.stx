@@ -265,7 +265,7 @@ rules
 
   noDuplicateImportedLabels(s, s_import) :- {ps}
     query label
-        filter e
+        filter I*
         in s_import |-> ps,
     areUniqueImportedLabels(s, ps).
 
@@ -274,7 +274,7 @@ rules
 
   isUniqueImportedLabel(s, (_, (id, _))) :-
     query label
-        filter I and { x :- x == id }
+        filter I+ and { x :- x == id }
         in s |-> [_] | error $[Duplicate imported label/relation [id]].
 
   // KIND OF CONSTRAINTS
@@ -405,16 +405,3 @@ rules
 
   scopeIsEqual(s, s) = 1.
   scopeIsEqual(_, _) = 0.
-
-rules
-  typeEq: TType * TType
-  typeListEq maps typeEq(list(*), list(*))
-
-  typeEq(LIST(T1), LIST(T2)) :-
-    typeEq(T1, T2).
-
-  typeEq(TUPLE(TS1), TUPLE(TS2)) :-
-    typeListEq(TS1, TS2).
-
-  typeEq(x, x).
-  typeEq(x, y) :- false.
