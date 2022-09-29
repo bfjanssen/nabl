@@ -213,7 +213,7 @@ test correct filter end of path query [[
       query ()
       filter P* and {x : scope :- true }
       in s |-> _.
-]]
+]] analysis succeeds
 
 test filter higher order constraint using correctly typed rule [[
   rules
