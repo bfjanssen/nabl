@@ -108,8 +108,8 @@ rules
   desugar-tuple: Tuple0Sort()      -> TupleSort([])
   desugar-tuple: TupleNSort(s, ss) -> TupleSort([s|ss])
 
-  desugar-tuple: Tuple0()      -> Tuple([])
-  desugar-tuple: TupleN(x, xs) -> Tuple([x|xs])
+  desugar-tuple: Tuple0(){a*}      -> Tuple([]){a*}
+  desugar-tuple: TupleN(x, xs){a*} -> Tuple([x|xs]){a*}
 
   desugar-tuple: Tuple0Lift()      -> TupleLift([])
   desugar-tuple: TupleNLift(x, xs) -> TupleLift([x|xs])
