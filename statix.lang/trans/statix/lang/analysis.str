@@ -101,6 +101,10 @@ rules // Analysis
 
   empty-custom-analysis = !([], CustomAnalysis([]))
 
+  editor-hover = stx-editor-hover(pp-partial-Statix-string)
+
+  editor-resolve = stx-editor-resolve
+
   check-module-name(|path): ast -> e*
     with ext := <get-extension> path
        ; if <raw-eq> (ext, "spt") then

@@ -3,8 +3,12 @@ module Analysis
 imports
 
   statix/Menus
-  statix/References
 
 language
 
   observer : editor-analyze (constraint) (multifile)
+
+references
+
+  reference _ : editor-resolve
+  hover _     : editor-hover

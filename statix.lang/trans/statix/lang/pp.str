@@ -29,6 +29,19 @@ rules
   pp-partial-Statix-string(|sort) =
     pp-Statix-string(prettyprint-Statix(|sort))
 
+  prettyprint-Statix:
+    "nabl2.Var"#([_, _]) -> [ H(
+                 [SOpt(HS(), "0")]
+               , t1__'
+               )
+             ]
+    with t1__' := <clean-layout-empty-symbols(
+                   | ""
+                   , FALSE()
+                   , FALSE()
+                   )
+                   ; flatten-list> [S("Free variable")]
+
 rules
 
   nabl2-prettyprint-hook   = prettyprint-Statix-IType
