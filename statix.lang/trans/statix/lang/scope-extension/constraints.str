@@ -78,12 +78,12 @@ rules
     where d := <stx-get-ast-ref(|a)> r
         ; s := <stx-get-ast-property(|a, "declScope")> r
 
-  ext-explicate-set-legacy(|a): ExtDecl(d) -> ExtDecl(d')
+  ext-explicate-set-legacy(|a): LegDecl(d) -> LegDecl(d')
     where i := <nabl2-get-occurrence-index> d
         ; t := <nabl2-set-ast-index(|i)> ()
         ; d' := <nabl2-get-ast-property(|a, "decl")> t
 
-  ext-explicate-set-legacy(|a): ExtRef(r) -> ExtDecl(d)
+  ext-explicate-set-legacy(|a): LegRef(r) -> LegDecl(d)
     where i := <nabl2-get-occurrence-index> r
         ; t := <nabl2-set-ast-index(|i)> ()
         ; d := <nabl2-get-ast-property(|a, "decl")> t

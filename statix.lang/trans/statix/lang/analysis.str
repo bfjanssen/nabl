@@ -47,8 +47,6 @@ rules // Analysis
        ; file* := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
-       ; <debug> path
-       ; <map(Fst);debug> results
        ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, <id>))> results
 
   analyze-custom-unit:
