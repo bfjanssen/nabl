@@ -147,12 +147,16 @@ rules //Compare Aterms
       (_, _, ast-stx@Module(name, _), path, project-path) -> (filename, result)
     where a-stx := <stx-get-ast-analysis> ast-stx;
           (ast-nabl, a-nabl) := <legacy-analyze> $[[project-path]/[path]]
-    with  FileSpec(_, _, _, _, rules*, _) := <generate-aterm'(|a-stx)> ast-stx;
-          FileSpec(_, _, _, _, legacy-rules*, _) := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
+    with  FileSpec(import*, edge*, data*, _, rule*, ext*) := <generate-aterm'(|a-stx)> ast-stx;
+          FileSpec(legacy-import*, legacy-edge*, legacy-data*, _, legacy-rule*, legacy-ext*) := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
           filename := <guarantee-extension(|"unification.txt")> path;
-          if unification := <unify(?Var(_))> [(rules*, legacy-rules*)] then
+          if and(<imset-from-list;equal(|<imset-from-list> import*)> legacy-import*,
+             and(<imset-from-list;equal(|<imset-from-list> edge*)> legacy-edge*,
+             and(<imset-from-list;equal(|<imset-from-list> data*)> legacy-data*,
+             and(<imset-from-list;equal(|<imset-from-list> ext*)> legacy-ext*,
+                 unification := <unify(?Var(_))> [(rule*, legacy-rule*)])))) then
             result := <rename-module(|"unification")> unification
           else
-            result := <rename-module(|"unification")> "Unification failed"
+            result := <rename-module(|"unification")> "Comparison failed"
           end
 
