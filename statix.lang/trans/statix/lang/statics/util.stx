@@ -272,10 +272,18 @@ rules
   isUniqueImportedLabel: scope * (path * (RelationId * LType))
   areUniqueImportedLabels maps isUniqueImportedLabel(*, list(*))
 
-  isUniqueImportedLabel(s, (_, (id, _))) :-
+  isUniqueImportedLabel(s, (_, (id, _))) :- {p ps}
     query label
         filter I+ and { x :- x == id }
-        in s |-> [_] | error $[Duplicate imported label/relation [id]].
+        in s |-> [(p, _)|ps],
+        uniqueLabelDecls(ps, startOfPathScope(p)) | error $[Duplicate imported label/relation [id]].
+
+  uniqueLabelDecls: list((path * (RelationId * LType))) * scope
+
+  uniqueLabelDecls([], _).
+  uniqueLabelDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueLabelDecls(ps, s).
 
   // KIND OF CONSTRAINTS
   setCKind: scope * ConstraintId * CKind
