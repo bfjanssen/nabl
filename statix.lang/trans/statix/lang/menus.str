@@ -4,6 +4,10 @@ imports
 
   nabl2/api
 
+  statix/api
+
+  statix/lang/normalize/util
+
   signatures/statix/lang/-
   statix/lang/-
   statix/lang/statics/-
@@ -120,8 +124,12 @@ rules // Precompilation
          result   := <rename-module(|"precompiled");pp-Statix-string> ast
 
   get-precompiled-ast: (_, _, ast, path, project-path) -> ast'
-    where a := <nabl2-get-resource-analysis> $[[project-path]/[path]]
-    with ast' := <normalize(|a); precompile(|a)> ast
+    where a := <stx-get-ast-analysis> ast
+    with ast' := <normalize(|a); replace-tgts; precompile(|a); reverse-tgts> ast
+
+  reverse-tgts = topdown(try(reverse-tgt))
+
+  reverse-tgt: EOP(){a*} -> TGT(){a*}
 
 rules // Explicit signature rules
 
@@ -147,16 +155,41 @@ rules //Compare Aterms
       (_, _, ast-stx@Module(name, _), path, project-path) -> (filename, result)
     where a-stx := <stx-get-ast-analysis> ast-stx;
           (ast-nabl, a-nabl) := <legacy-analyze> $[[project-path]/[path]]
-    with  FileSpec(import*, edge*, data*, _, rule*, ext*) := <generate-aterm'(|a-stx)> ast-stx;
-          FileSpec(legacy-import*, legacy-edge*, legacy-data*, _, legacy-rule*, legacy-ext*) := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
-          filename := <guarantee-extension(|"unification.txt")> path;
-          if and(<imset-from-list;equal(|<imset-from-list> import*)> legacy-import*,
+    with  aterm := <generate-aterm'(|a-stx)> ast-stx;
+          legacy-aterm := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
+          filename := <guarantee-extension(|"comparison.txt")> path;
+          if compare-aterms'(|aterm, legacy-aterm) then
+            result := <rename-module(|"comparison")> "Comparison successful"
+          else
+            result := <rename-module(|"comparison")> "Comparison failed"
+          end
+
+  compare-aterms'(|FileSpec(import*, edge*, data*, _, rule*, ext*),
+                  FileSpec(legacy-import*, legacy-edge*, legacy-data*, _, legacy-rule*, legacy-ext*)) =
+    and(<imset-from-list;equal(|<imset-from-list> import*)> legacy-import*,
              and(<imset-from-list;equal(|<imset-from-list> edge*)> legacy-edge*,
              and(<imset-from-list;equal(|<imset-from-list> data*)> legacy-data*,
-             and(<imset-from-list;equal(|<imset-from-list> ext*)> legacy-ext*,
-                 unification := <unify(?Var(_))> [(rule*, legacy-rule*)])))) then
-            result := <rename-module(|"unification")> unification
-          else
-            result := <rename-module(|"unification")> "Comparison failed"
-          end
+             //and(<imset-from-list;equal(|<imset-from-list> ext*)> legacy-ext*,
+                 unification := <unify(?Var(_))> [(rule*, legacy-rule*)])))
+
+  compare-project:
+    (_, _, _, path, project-path) -> (filename, result)
+  where nabl-results := <nabl-analysis-results> $[[project-path]/[path]];
+        stx-results := <stx-analysis-results> $[[project-path]/[path]]
+  with  filename := "project-comparison.txt";
+        result := <map(compare-all(|stx-results))> nabl-results
+
+   compare-all(|stx-results): (p, object) -> x
+                            with if <equal(|".")> p then x := () else
+                                   Full(ast-nabl, CompatUnitAnalysis(_, a-nabl), _, _, _) := object;
+                                   Full(ast-stx, FileAnalysis(_, a-stx, _), _, _, _) := <getfirst(?(p, <id>))> stx-results;
+                                   aterm := <generate-aterm'(|a-stx)> ast-stx;
+                                   legacy-aterm := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
+                                   if compare-aterms'(|aterm, legacy-aterm) then
+                                     x := (p, "Comparison successful")
+                                   else
+                                     FileSpec(_, _, _, _, _, ext*) := aterm;
+                                     x := (p, "Comparison failed", ext*)
+                                   end
+                                 end
 

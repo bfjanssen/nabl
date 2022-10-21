@@ -17,4 +17,6 @@ menus
 
     separator
 
-    action: "Compare ATerms" = compare-aterms
+    action: "Compare ATerms (file)" = compare-aterms
+
+    action: "Compare ATerms (project)" = compare-project

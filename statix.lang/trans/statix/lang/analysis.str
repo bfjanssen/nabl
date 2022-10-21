@@ -20,6 +20,7 @@ imports
 
   statix/runtime/pp
   statix/runtime/services
+  statix/runtime/analysis
   statixruntime
   statix/api
 
@@ -43,11 +44,23 @@ rules // Analysis
   post-analyze = origin-track-forced(implicate-injections-Statix-Start)
 
   legacy-analyze: path -> (ast, analysis)
-    with path* := <current-language-source-and-include-files>
-       ; file* := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
+    with results := <nabl-analysis-results> path
+       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, <id>))> results
+
+  nabl-analysis-results: path -> results
+    with file* := <get-all-files> path
        ; prj   := (".", Added(()))
        ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
-       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, <id>))> results
+
+  stx-analysis-results: path -> results
+    with file* := <get-all-files> path
+       ; prj   := (".", Added(()))
+       ; AnalysisResult(results) := <stx--editor-analyze(pre-analyze, post-analyze, analyze-custom-unit, analyze-custom-final
+                                        |"statix/lang/statics/core", "projectOk", "fileOk")> AnalyzeMulti(prj, file*, (), ())
+
+  get-all-files: path -> files
+    with path* := <current-language-source-and-include-files>
+       ; files := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
 
   analyze-custom-unit:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
