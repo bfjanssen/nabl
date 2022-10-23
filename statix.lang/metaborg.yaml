@@ -54,6 +54,9 @@ exports:
   directory: trans/
   includes:
   - "statix/lang/**/*.nabl2"
+- language: StatixLang
+  directory: src-gen/statix
+  includes: "**/*.aterm"
 language:
   sdf:
     sdf2table: java
