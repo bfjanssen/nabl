@@ -13,69 +13,77 @@ signature
 
 rules
 
-noDuplicatePatterns : scope * ConstraintId * list(Term) * scope * RuleHead
+  //Check for duplicate patterns matching the RulePattern
+  noDuplicatePatterns : scope * ConstraintId * list(Term) * scope * RuleHead
 
-noDuplicatePatterns(s, id, pattern, s_decl, head) :- {ps filtered1 filtered2}
-  ps == resolvePatterns(s, id),
-  filtered1 == removeIrrelevantPatterns(s_decl, ps),
-  filtered2 == removeDifferentPatterns(pattern, filtered1),
-  isUniquePattern(id, filtered2, head).
+  noDuplicatePatterns(s, id, pattern, s_decl, head) :- {ps filtered1 filtered2}
+    ps == resolvePatterns(s, id),
+    filtered1 == removeIrrelevantPatterns(s_decl, ps),
+    filtered2 == removeDifferentPatterns(pattern, filtered1),
+    isUniquePattern(id, filtered2, head).
 
-removeIrrelevantPatterns : scope * Declarations -> Declarations
+  //Constraint that filters out rules that are shadowed
+  removeIrrelevantPatterns : scope * Declarations -> Declarations
 
-removeIrrelevantPatterns(_, []) = [].
-removeIrrelevantPatterns(s_decl, [d@(_, (_, (_, s)))| ds]) = removeIrrelevantPatternsHelper(scopeIsEqual(s_decl, s), s_decl, d, ds).
+  removeIrrelevantPatterns(_, []) = [].
+  removeIrrelevantPatterns(s_decl, [d@(_, (_, (_, s)))| ds]) = removeIrrelevantPatternsHelper(scopeIsEqual(s_decl, s), s_decl, d, ds).
 
-removeIrrelevantPatternsHelper : int * scope * Declaration * Declarations -> Declarations
+  removeIrrelevantPatternsHelper : int * scope * Declaration * Declarations -> Declarations
 
-removeIrrelevantPatternsHelper(1, s_decl, d, ds) = [d | removeIrrelevantPatterns(s_decl, ds)].
-removeIrrelevantPatternsHelper(0, s_decl, _, ds) = removeIrrelevantPatterns(s_decl, ds).
+  removeIrrelevantPatternsHelper(1, s_decl, d, ds) = [d | removeIrrelevantPatterns(s_decl, ds)].
+  removeIrrelevantPatternsHelper(0, s_decl, _, ds) = removeIrrelevantPatterns(s_decl, ds).
 
-removeDifferentPatterns : list(Term) * Declarations -> Declarations
+  //Constraint that filters out patterns that are different
+  removeDifferentPatterns : list(Term) * Declarations -> Declarations
 
-removeDifferentPatterns(_, []) = [].
-removeDifferentPatterns(p1, [d@(_,(_, (p2, _)))| ds]) = removeDifferentPatternsHelper(comparePatterns(p1, p2, []), p1, d, ds).
+  removeDifferentPatterns(_, []) = [].
+  removeDifferentPatterns(p1, [d@(_,(_, (p2, _)))| ds]) = removeDifferentPatternsHelper(comparePatterns(p1, p2, []), p1, d, ds).
 
-removeDifferentPatternsHelper : (int * Mappings) * list(Term) * Declaration *
+  removeDifferentPatternsHelper : (int * Mappings) * list(Term) * Declaration *
                                 Declarations -> Declarations
 
-removeDifferentPatternsHelper((1, _), p1, _, ds) = removeDifferentPatterns(p1, ds).
-removeDifferentPatternsHelper((0, _), p1, d, ds) = [d | removeDifferentPatterns(p1, ds)].
+  removeDifferentPatternsHelper((1, _), p1, _, ds) = removeDifferentPatterns(p1, ds).
+  removeDifferentPatternsHelper((0, _), p1, d, ds) = [d | removeDifferentPatterns(p1, ds)].
 
-isUniquePattern : string * Declarations * RuleHead
+  // Check remaining pattern(s) for whether there are duplicates
+  isUniquePattern : string * Declarations * RuleHead
 
-isUniquePattern(_, [], head) :- false | error "NO PATTERN IS EQUAL" @head. //Would indicate a bug
-isUniquePattern(_, [_], _).
-isUniquePattern(id, ps, head) :-
+  isUniquePattern(_, [], head) :- false | error "NO PATTERN IS EQUAL" @head. //Would indicate a bug
+  isUniquePattern(_, [_], _).
+  isUniquePattern(id, ps, head) :-
     duplicatePatternErrorMessage(containsImportedPattern(ps), id, head).
 
-duplicatePatternErrorMessage: int * string * RuleHead
+  //Get the correct duplicate pattern error message
+  duplicatePatternErrorMessage: int * string * RuleHead
 
-duplicatePatternErrorMessage(0, id, head) :-
+  duplicatePatternErrorMessage(0, id, head) :-
     false | error $[Rule pattern equivalent for rule [id]] @head.
-duplicatePatternErrorMessage(1, id, head) :-
+  duplicatePatternErrorMessage(1, id, head) :-
     false | error $[Rule pattern equivalent to imported rule for rule [id]] @head.
 
-containsImportedPattern : Declarations -> int
+  //Check wherther a duplicate pattern is imported or not
+  containsImportedPattern : Declarations -> int
 
-containsImportedPattern([]) = 0.
-containsImportedPattern([(_PathStep(_, _, _), _)|_]) = 1.
-containsImportedPattern([(_PathEmpty(_), _)|ps]) = containsImportedPattern(ps).
+  containsImportedPattern([]) = 0.
+  containsImportedPattern([(_PathStep(_, _, _), _)|_]) = 1.
+  containsImportedPattern([(_PathEmpty(_), _)|ps]) = containsImportedPattern(ps).
 
 rules
 
-noDuplicateImportedPatterns: scope * scope
+  // Check that there are no duplicate imported rule patterns between two or more imports
+  noDuplicateImportedPatterns: scope * scope
 
-noDuplicateImportedPatterns(s, s_import) :- {preds}
+  noDuplicateImportedPatterns(s, s_import) :- {preds}
     query predicate
     filter I*
     in s_import |-> preds,
     checkEveryConstraint(preds, s, s_import).
 
-checkEveryConstraint: list((path * (ConstraintId * IType))) * scope * scope
+  //Go through every constraint declaration of an import to check its corresponding ruleheads
+  checkEveryConstraint: list((path * (ConstraintId * IType))) * scope * scope
 
-checkEveryConstraint([], _, _).
-checkEveryConstraint([(p,(id, _))|preds], s, s_import) :- {s_decl patterns filtered}
+  checkEveryConstraint([], _, _).
+  checkEveryConstraint([(p,(id, _))|preds], s, s_import) :- {s_decl patterns filtered}
     s_decl == startOfPathScope(p),
     query rulePattern
     filter I* and { x :- x == id }
@@ -84,10 +92,11 @@ checkEveryConstraint([(p,(id, _))|preds], s, s_import) :- {s_decl patterns filte
     checkAllImportedPatterns(filtered, s),
     checkEveryConstraint(preds, s, s_import).
 
-checkAllImportedPatterns: Declarations * scope
+  //Go through all imported patterns and check whether they are unique
+  checkAllImportedPatterns: Declarations * scope
 
-checkAllImportedPatterns([], _).
-checkAllImportedPatterns([(_, (id, (pattern, s_decl)))|patterns], s) :- {imports filtered1 filtered2 p}
+  checkAllImportedPatterns([], _).
+  checkAllImportedPatterns([(_, (id, (pattern, s_decl)))|patterns], s) :- {imports filtered1 filtered2 p}
     query rulePattern
     filter I+ and { x :- x == id }
     in s |-> imports,
@@ -96,7 +105,8 @@ checkAllImportedPatterns([(_, (id, (pattern, s_decl)))|patterns], s) :- {imports
     uniquePatternDecls(filtered2, startOfPathScope(p)) | error $[Duplicate imported rule patterns of rule [id]],
     checkAllImportedPatterns(patterns, s).
 
-uniquePatternDecls: Declarations * scope
+  // Used to check whether all declarations are the same, needed due to diamond imports
+  uniquePatternDecls: Declarations * scope
 
   uniquePatternDecls([], _).
   uniquePatternDecls([(p, _)|ps], s) :-
@@ -105,87 +115,91 @@ uniquePatternDecls: Declarations * scope
 
 rules
 
-comparePattern : Term * Term * Mappings -> (int * Mappings)
+  // Compare two patterns using a mapping structure to bind variables to variables in the other pattern.
+  // The result is 0 if the patterns are equal, 1 if not.
+  comparePatterns : list(Term) * list(Term) * Mappings -> (int * Mappings)
 
-comparePattern(Int2Term(Int(x)), Int2Term(Int(x)), ms) = (0, ms).
+  comparePatterns([], [], ms) = (0, ms).
+  comparePatterns([], _, ms) = (1, ms).
+  comparePatterns(_, [], ms) = (1, ms).
+  comparePatterns([x|xs], [y|ys], ms) = comparePatternsHelper(comparePattern(x, y, ms), xs, ys).
 
-comparePattern(Str2Term(Str(x)), Str2Term(Str(x)), ms) = (0, ms).
+  comparePatternsHelper: (int * Mappings) * list(Term) * list(Term) -> (int * Mappings)
 
-comparePattern(Var2Term(Wld()), Var2Term(Wld()), ms) = (0, ms).
-comparePattern(Var2Term(Wld()), Var2Term(Var(y)), ms) = compareSingleVarHelper(lookupR(y, ms), ("#", y), ms).
-comparePattern(Var2Term(Var(x)), Var2Term(Wld()), ms) = compareSingleVarHelper(lookupL(x, ms), (x, "#"), ms).
-comparePattern(Var2Term(Var(x)), Var2Term(Var(y)), ms) = compareDoubleVarHelper(lookupL(x, ms), (x, y), ms).
+  comparePatternsHelper((1, ms), _, _) = (1, ms).
+  comparePatternsHelper((0, ms), xs, ys) = comparePatterns(xs, ys, ms).
 
-comparePattern(Tuple(xs), Tuple(ys), ms) = comparePatterns(xs, ys, ms).
+  // Compare two terms, which belong to a rule pattern. The mappings contain variables that are already bound in the rule pattern.
+  // The result is 0 if the terms allow the pattern to still be equal, 1 if not.
+  comparePattern : Term * Term * Mappings -> (int * Mappings)
 
-comparePattern(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
-comparePattern(t1@List(_), t2@ListTail(_, _), ms) = compareListPatternHelper(t1, flattenListTail(t2), ms).
-comparePattern(t1@ListTail(_, _), t2@List(_), ms) = compareListPatternHelper(flattenListTail(t1), t2, ms).
-comparePattern(t1@ListTail(_, _), t2@ListTail(_, _), ms) = compareListPatternHelper(flattenListTail(t1), flattenListTail(t2), ms).
+  comparePattern(Int2Term(Int(x)), Int2Term(Int(x)), ms) = (0, ms).
 
-comparePattern(Op(id, Terms2CommaTerms(xs)), Op(id, Terms2CommaTerms(ys)), ms) = comparePatterns(xs, ys, ms).
+  comparePattern(Str2Term(Str(x)), Str2Term(Str(x)), ms) = (0, ms).
 
-comparePattern(Ascribe(t1, _), t2, ms) = comparePattern(t1, t2, ms).
-comparePattern(t1, Ascribe(t2, _), ms) = comparePattern(t1, t2, ms).
+  comparePattern(Var2Term(Wld()), Var2Term(Wld()), ms) = (0, ms).
+  comparePattern(Var2Term(Wld()), Var2Term(Var(y)), ms) = compareSingleVarHelper(lookupR(y, ms), ("#", y), ms).
+  comparePattern(Var2Term(Var(x)), Var2Term(Wld()), ms) = compareSingleVarHelper(lookupL(x, ms), (x, "#"), ms).
+  comparePattern(Var2Term(Var(x)), Var2Term(Var(y)), ms) = compareDoubleVarHelper(lookupL(x, ms), (x, y), ms).
 
-comparePattern(As(v1@Var(x), t1), As(v2@Var(y), t2), ms) =
+  comparePattern(Tuple(xs), Tuple(ys), ms) = comparePatterns(xs, ys, ms).
+
+  comparePattern(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
+  comparePattern(t1@List(_), t2@ListTail(_, _), ms) = compareListPatternHelper(t1, flattenListTail(t2), ms).
+  comparePattern(t1@ListTail(_, _), t2@List(_), ms) = compareListPatternHelper(flattenListTail(t1), t2, ms).
+  comparePattern(t1@ListTail(_, _), t2@ListTail(_, _), ms) = compareListPatternHelper(flattenListTail(t1), flattenListTail(t2), ms).
+
+  comparePattern(Op(id, Terms2CommaTerms(xs)), Op(id, Terms2CommaTerms(ys)), ms) = comparePatterns(xs, ys, ms).
+
+  comparePattern(Ascribe(t1, _), t2, ms) = comparePattern(t1, t2, ms).
+  comparePattern(t1, Ascribe(t2, _), ms) = comparePattern(t1, t2, ms).
+
+  comparePattern(As(v1@Var(x), t1), As(v2@Var(y), t2), ms) =
     comparePatternsHelper(comparePattern(Var2Term(v1), Var2Term(v2), ms), [t1], [t2]).
-comparePattern(As(Wld(), t1), t2, ms) = comparePattern(t1, t2, ms).
-comparePattern(As(Var(x), t1), t2, ms) = compareAsHelper(lookupL(x, ms), (x, "#"), t1, t2, ms).
-comparePattern(t1, As(Wld(), t2), ms) = comparePattern(t1, t2, ms).
-comparePattern(t1, As(Var(y), t2), ms) = compareAsHelper(lookupR(y, ms), ("#", y), t1, t2, ms).
+  comparePattern(As(Wld(), t1), t2, ms) = comparePattern(t1, t2, ms).
+  comparePattern(As(Var(x), t1), t2, ms) = compareAsHelper(lookupL(x, ms), (x, "#"), t1, t2, ms).
+  comparePattern(t1, As(Wld(), t2), ms) = comparePattern(t1, t2, ms).
+  comparePattern(t1, As(Var(y), t2), ms) = compareAsHelper(lookupR(y, ms), ("#", y), t1, t2, ms).
 
-comparePattern(Path2Term(PathLit2Path(PathEmpty(st1))), Path2Term(PathLit2Path(PathEmpty(st2))), ms) = comparePattern(st1, st2, ms).
-comparePattern(Path2Term(PathLit2Path(PathStep(pt1, lt1, st1))),
-               Path2Term(PathLit2Path(PathStep(pt2, lt2, st2))), ms)
-                = comparePatternsHelper(comparePattern(pt1, pt2, ms), [lt1, st1], [lt2, st2]).
+  comparePattern(Path2Term(PathLit2Path(PathEmpty(st1))), Path2Term(PathLit2Path(PathEmpty(st2))), ms) = comparePattern(st1, st2, ms).
+  comparePattern(Path2Term(PathLit2Path(PathStep(pt1, lt1, st1))),
+                 Path2Term(PathLit2Path(PathStep(pt2, lt2, st2))), ms)
+                 = comparePatternsHelper(comparePattern(pt1, pt2, ms), [lt1, st1], [lt2, st2]).
 
-comparePattern(_, _, ms) = (1, ms).
+  comparePattern(_, _, ms) = (1, ms).
 
 rules
 
-lookupL : string * Mappings -> string
+  lookupL : string * Mappings -> string
 
-lookupL(_, []) = "?".
-lookupL(sl, [(sl, sr)|_]) = sr.
-lookupL(sl, [_|tail]) = lookupL(sl, tail).
+  lookupL(_, []) = "?".
+  lookupL(sl, [(sl, sr)|_]) = sr.
+  lookupL(sl, [_|tail]) = lookupL(sl, tail).
 
-lookupR : string * Mappings -> string
+  lookupR : string * Mappings -> string
 
-lookupR(_, []) = "?".
-lookupR(sr, [(sl, sr)|_]) = sl.
-lookupR(sr, [_|tail]) = lookupL(sr, tail).
+  lookupR(_, []) = "?".
+  lookupR(sr, [(sl, sr)|_]) = sl.
+  lookupR(sr, [_|tail]) = lookupL(sr, tail).
 
-compareSingleVarHelper : string * Mapping * Mappings -> (int * Mappings)
+  compareSingleVarHelper : string * Mapping * Mappings -> (int * Mappings)
 
-compareSingleVarHelper("?", m, ms) = (0, [m|ms]).
-compareSingleVarHelper(_, _, ms) = (1, ms).
+  compareSingleVarHelper("?", m, ms) = (0, [m|ms]).
+  compareSingleVarHelper(_, _, ms) = (1, ms).
 
-compareDoubleVarHelper : string * Mapping * Mappings -> (int * Mappings)
+  compareDoubleVarHelper : string * Mapping * Mappings -> (int * Mappings)
 
-compareDoubleVarHelper(y, (x, y), ms) = (0, ms).
-compareDoubleVarHelper("?", (x, y), ms) = compareSingleVarHelper(lookupR(y, ms), (x, y), ms).
-compareDoubleVarHelper(_, _, ms) = (1, ms).
+  compareDoubleVarHelper(y, (x, y), ms) = (0, ms).
+  compareDoubleVarHelper("?", (x, y), ms) = compareSingleVarHelper(lookupR(y, ms), (x, y), ms).
+  compareDoubleVarHelper(_, _, ms) = (1, ms).
 
-compareAsHelper : string * Mapping * Term * Term * Mappings -> (int * Mappings)
+  compareAsHelper : string * Mapping * Term * Term * Mappings -> (int * Mappings)
 
-compareAsHelper("?", m, t1, t2, ms) = comparePattern(t1, t2, [m|ms]).
-compareAsHelper(_, _, _, _, ms) = (1, ms).
+  compareAsHelper("?", m, t1, t2, ms) = comparePattern(t1, t2, [m|ms]).
+  compareAsHelper(_, _, _, _, ms) = (1, ms).
 
-compareListPatternHelper : Term * Term * Mappings -> (int * Mappings)
+  compareListPatternHelper : Term * Term * Mappings -> (int * Mappings)
 
-compareListPatternHelper(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
-compareListPatternHelper(ListTail(xs, xt), ListTail(ys, yt), ms) = comparePatternsHelper(comparePattern(xt, yt, ms), xs, ys).
-compareListPatternHelper(_, _, ms) = (1, ms).
-
-comparePatterns : list(Term) * list(Term) * Mappings -> (int * Mappings)
-
-comparePatterns([], [], ms) = (0, ms).
-comparePatterns([], _, ms) = (1, ms).
-comparePatterns(_, [], ms) = (1, ms).
-comparePatterns([x|xs], [y|ys], ms) = comparePatternsHelper(comparePattern(x, y, ms), xs, ys).
-
-comparePatternsHelper: (int * Mappings) * list(Term) * list(Term) -> (int * Mappings)
-
-comparePatternsHelper((1, ms), _, _) = (1, ms).
-comparePatternsHelper((0, ms), xs, ys) = comparePatterns(xs, ys, ms).
+  compareListPatternHelper(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
+  compareListPatternHelper(ListTail(xs, xt), ListTail(ys, yt), ms) = comparePatternsHelper(comparePattern(xt, yt, ms), xs, ys).
+  compareListPatternHelper(_, _, ms) = (1, ms).
