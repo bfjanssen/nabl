@@ -7,7 +7,7 @@ imports
   signatures/statix/lang/-
   statix/lang/-
   statix/lang/statics/desugar
-  statix/lang/statics/rule-order
+  statix/lang/statics/legacy/rule-order
   statix/lang/pp
   pp
 
@@ -18,7 +18,7 @@ rules
     where fail
     with outline := <desugar-all;outline(|path)> ast
 
-  outline(|path): ast -> [ Node("sort", sort-node*) 
+  outline(|path): ast -> [ Node("sort", sort-node*)
                          , Node("relations", rel-node*)
                          , Node("namespaces", ns-node*)
                          , Node("namespace queries", nsq-node*)
@@ -50,8 +50,8 @@ rules
     ; sorted* := <qsort(opdecl-lt)> ctor*
     ; node* := <map(!Node(<keep-origin(pp-partial-Statix-string(|"OpDecl"))>, []))> sorted*
 
-  outline-ctor(|x) = OpDecl(id, ConstOp(SimpleSort(?x))) 
-  outline-ctor(|x) = OpDecl(id, ArrowOp(id, SimpleSort(?x))) 
+  outline-ctor(|x) = OpDecl(id, ConstOp(SimpleSort(?x)))
+  outline-ctor(|x) = OpDecl(id, ArrowOp(id, SimpleSort(?x)))
 
   opdecl-lt: (OpDecl(x, _), OpDecl(y, _)) -> <string-lt> (x, y)
 

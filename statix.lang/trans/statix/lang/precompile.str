@@ -3,6 +3,7 @@ module statix/lang/precompile
 imports
 
   statix/lang/precompile/-
+  statix/lang/precompile/legacy/-
 
 rules
 

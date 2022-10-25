@@ -6,6 +6,7 @@ imports
 
   nabl2/api
   statix/lang/scope-extension/-
+  statix/lang/scope-extension/legacy/-
 
   statix/runtime/pp
 

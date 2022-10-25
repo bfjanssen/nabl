@@ -1,4 +1,4 @@
-module statix/lang/statics/hacks
+module statix/lang/statics/legacy/hacks
 
 imports
 
@@ -7,6 +7,7 @@ imports
   signatures/statix/lang/-
   statix/lang/util
   statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
 rules
 

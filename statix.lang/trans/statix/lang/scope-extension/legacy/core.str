@@ -1,0 +1,87 @@
+module statix/lang/scope-extension/legacy/core
+
+imports
+
+  nabl2/api
+
+  signatures/statix/lang/-
+  statix/lang/-
+  statix/lang/statics/-
+  statix/lang/scope-extension/-
+  statix/lang/scope-extension/legacy/-
+
+rules // collect extension constraints
+
+  ext-constraints-legacy: r@Rule(_, C(x, ps), _) -> c*
+    where r-ref := <ext-get-constraint-ref-legacy> x
+        ; c-param* := <ext-params-constraints-legacy(|r-ref)> ps
+        ; c-decl* := <ext-non-unique-decls-constraints-legacy> ps
+        ; c* := <conc> (c-param*, c-decl*)
+
+  ext-params-constraints-legacy(|r-ref): ps -> c*
+    where ((v*, c1*), t*) := < add-indices
+                             ; partition(ext-param-constraints-legacy(|r-ref))
+                             ; (unzip;(id, concat), map(Snd))
+                             > ps
+        ; z* := <raw-diff> (<all-vars> t*, <all-vars> v*)
+        ; c2* := <map(\ v@Var(z) -> [ExtIsCovered(ExtVar(<ext-get-var-decl-legacy> z), v)] \);concat> z*
+        ; c* := <conc> (c1*, c2*)
+
+  ext-param-constraints-legacy(|r-ref): (i, v@Var(y)) -> (v, c*)
+    where v-decl := <ext-get-var-decl-legacy> y
+        ; c* := [ ExtProvides(ExtParam(r-ref, i), ExtVar(v-decl), v)
+                , ExtRequires(ExtParam(r-ref, i), ExtVar(v-decl), v)
+                ]
+
+  ext-param-constraints-legacy(|r-ref): (i, w@Wld()) -> (w, c*)
+    where c* := [ ExtProvides(ExtParam(r-ref, i), ExtNone(), w)
+                , ExtRequires(ExtParam(r-ref, i), ExtLit([]), w)
+                ]
+
+  ext-constraints-legacy: l@LLam(ps, body) -> c*
+    where c* := <all-vars;map(\ Var(y) -> ExtIsCovered(ExtVar(<ext-get-var-decl-legacy> y), l) \)> ps
+
+  ext-constraints-legacy: c@CTry(_, _) -> []
+
+  ext-constraints-legacy: c@CExists(vs, _) -> c*
+    where c* := <filter(is-var);map(\ v@Var(y) -> ExtIsCovered(ExtVar(<ext-get-var-decl-legacy> y), v) \)> vs
+
+  ext-constraints-legacy: CNew(vs) -> c*
+    where c* := <filter(is-var);map(\ v@Var(y) -> ExtProvides(ExtVar(<ext-get-var-ref-legacy> y), ExtAll(), v) \)> vs
+
+  ext-constraints-legacy: CTellEdge(t, lbl, _) -> c*
+    where t-ref := <ext-get-term-ref-legacy> t
+        ; c* := [ExtRequires(t-ref, ExtLit([lbl]), t)]
+
+  ext-constraints-legacy: CTellRel(lbl, _, t) -> c*
+    where t-ref := <ext-get-term-ref-legacy> t
+        ; c* := [ExtRequires(t-ref, ExtLit([lbl]), t)]
+
+
+  ext-constraints-legacy: C(x, args, _) -> c*
+    where r-ref := <ext-get-constraint-ref-legacy> x
+        ; c* := <ext-args-constraints-legacy(|r-ref)> args
+
+  ext-args-constraints-legacy(|r-ref): args -> c*
+    where i_v* := <add-indices;filter((id, !(<id>, <ext-get-term-ref-legacy>)))> args
+        ; c* := <map(ext-arg-constraints-legacy(|r-ref));concat> i_v*
+
+  ext-arg-constraints-legacy(|r-ref): (i, (t, t-ref)) -> c*
+    where c* := [ ExtProvides(t-ref, ExtParam(r-ref, i), t)
+                , ExtRequires(t-ref, ExtParam(r-ref, i), t)
+                ]
+
+
+  ext-get-term-ref-legacy: Var(x) -> ExtVar(r-ref)
+    where r-ref := <ext-get-var-ref-legacy> x
+
+  ext-non-unique-decls-constraints-legacy: args -> c*
+    with groups := <all-vars; group-by(?Var(<id>); strip-annos, \d -> (d, <?Var(<id>); ext-get-var-decl-legacy> d) \); map(Snd)> args
+        ; c* := <mapconcat(\[(_, rep)|others] -> <mapconcat(ext-non-unique-decl-constraints-legacy(|rep))> others \)> groups
+
+  ext-non-unique-decl-constraints-legacy(|rep): (t, d) -> c*
+    with c* := [ ExtRequires(ExtVar(rep), ExtVar(d), t)
+               , ExtRequires(ExtVar(d), ExtVar(rep), t)
+               // FIXME Adding similar ExtProvides constraints again filters out these constraints.
+               // How should we handle provides on non-uniquely declared variables?
+               ]

@@ -22,12 +22,6 @@ rules
   ; normalize-in-sections(normalize-functional-head)
   ; bottomup(try(normalize-functional-cops))
 
-  normalize-functional-constraints-legacy =
-    nabl2-custom-analysis-info-msg(|"| Normalize functional constraints...")
-  ; normalize-in-sections(normalize-functional-cdecl)
-  ; normalize-in-sections(normalize-functional-head)
-  ; bottomup(try(normalize-functional-cops))
-
   normalize-functional-cdecl:
       CDecl(ind, x, t){a*} -> decl*
     where FunType(_, _) := t

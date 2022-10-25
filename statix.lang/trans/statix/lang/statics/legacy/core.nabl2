@@ -1,10 +1,10 @@
-module statix/lang/statics/core
+module statix/lang/statics/legacy/core
 
 imports
 
   signatures/statix/lang/-
 
-  statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
 signature
 
@@ -58,7 +58,7 @@ rules
 
     // check duplicates
     distinct/name D(s)/Mod | error $[Duplicate module [NAME]] @NAMES,
-  
+
     // sugar
 
     Rel{Decl()} <- s,

@@ -8,6 +8,7 @@ imports
   statix/lang/-
   statix/lang/statics/-
   statix/lang/scope-extension/-
+  statix/lang/scope-extension/legacy/-
 
   pp/statix/lang/-
   statix/lang/pp

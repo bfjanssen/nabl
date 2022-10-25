@@ -1,8 +1,0 @@
-module statix/lang/statics/deprecated
-
-imports
-
-  signatures/statix/lang/-
-  statix/lang/statics/-
-
-rules

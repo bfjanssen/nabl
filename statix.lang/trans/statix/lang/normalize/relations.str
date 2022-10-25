@@ -22,12 +22,6 @@ rules
     normalize-in-sections(normalize-functional-reldecl);
     bottomup(try(normalize-functional-query))
 
-  normalize-functional-relations-legacy =
-    nabl2-custom-analysis-info-msg(|"| Normalize functional relations...");
-    normalize-in-sections(normalize-functional-reldecl);
-    bottomup(try(normalize-functional-query))
-
-
   normalize-functional-reldecl:
       RelDecl(x, t){a*} -> decl*
     where FunType(_, _) := t

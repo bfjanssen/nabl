@@ -24,15 +24,6 @@ rules
     ; try(normalize-scoped(replace-term,id,id,term-to-c))
     )
 
-  normalize-terms-legacy =
-    nabl2-custom-analysis-info-msg(|"| Normalize terms...");
-    bottomup(
-      try(normalize-ast-ids)
-    ; try(normalize-scoped(replace-pattern,fail,not(pattern-no-add),pattern-to-c))
-    ; try(normalize-scoped(replace-term,id,id,term-to-c))
-    )
-
-
 rules
 
   normalize-ast-ids = WithId(normalize-term-or-id)

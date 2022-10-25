@@ -1,0 +1,61 @@
+module statix/lang/scope-extension/legacy/constraints
+
+imports
+
+  nabl2/api
+
+  signatures/statix/lang/-
+  statix/lang/-
+  statix/lang/statics/-
+
+  pp
+  pp/statix/lang/-
+
+rules
+
+  ext-get-constraint-ref-legacy: x -> LegRef(<nabl2-mk-occurrence(|"C")> x)
+
+  ext-get-var-ref-legacy: x -> LegRef(<nabl2-mk-occurrence(|"Var")> x)
+
+  ext-get-var-decl-legacy: x -> LegDecl(<nabl2-mk-occurrence(|"Var")> x)
+
+
+rules
+
+  explicate-ext-constraints-legacy(|a): c* -> c''*
+    with c'* := <map(try(ext-escape-constraint-legacy(|a)))> c*
+       ; c''* := <map(topdown(try(ext-explicate-set-legacy(|a))))> c'*
+
+  ext-escape-constraint-legacy(|a): ExtProvides(v, s, o) -> ExtProvidesEsc(v, s, o)
+    where <ext-var-escapes-legacy(|a)> v
+
+  ext-escape-constraint-legacy(|a): ExtRequires(v, s, o) -> ExtRequiresEsc(v, s, o)
+    where <ext-var-escapes-legacy(|a)> v
+
+  ext-var-escapes-legacy(|a): ExtVar(ExtRef(r)) -> <id>
+    where (d, _) := <nabl2-get-resolved-name(|a)> r
+        ; s_r := <nabl2-get-property(|a, "barrier")> r
+        ; s_d := <nabl2-get-property(|a, "barrier")> d
+        ; <not(eq)> (s_r, s_d)
+
+  ext-path-scopes = nabl2-get-path-scopes; init
+
+
+  // Variable occurrences have scopes as indices, which makes it difficult to
+  // construct them directly. Therefore, we construct regular (ast indexed)
+  // occurrences, but get the real declaration from the ast using the index
+  // in the initial occurrence.
+
+  ext-explicate-set-legacy(|a): LegDecl(d) -> LegDecl(d')
+    where i := <nabl2-get-occurrence-index> d
+        ; t := <nabl2-set-ast-index(|i)> ()
+        ; d' := <nabl2-get-ast-property(|a, "decl")> t
+
+  ext-explicate-set-legacy(|a): LegRef(r) -> LegDecl(d)
+    where i := <nabl2-get-occurrence-index> r
+        ; t := <nabl2-set-ast-index(|i)> ()
+        ; d := <nabl2-get-ast-property(|a, "decl")> t
+
+  ext-get-name: LegRef(o) -> <nabl2-get-occurrence-name> o
+
+  ext-get-name: LegDecl(o) -> <nabl2-get-occurrence-name> o

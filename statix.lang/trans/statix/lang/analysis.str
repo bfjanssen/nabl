@@ -17,6 +17,7 @@ imports
 
   statix/lang/-
   statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
   statix/runtime/pp
   statix/runtime/services
