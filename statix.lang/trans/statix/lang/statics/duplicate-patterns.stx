@@ -122,7 +122,7 @@ rules
   comparePatterns([], [], ms) = (0, ms).
   comparePatterns([], _, ms) = (1, ms).
   comparePatterns(_, [], ms) = (1, ms).
-  comparePatterns([x|xs], [y|ys], ms) = comparePatternsHelper(comparePattern(x, y, ms), xs, ys).
+  comparePatterns([x|xs], [y|ys], ms) = comparePatternsHelper(compareTerms(x, y, ms), xs, ys).
 
   comparePatternsHelper: (int * Mappings) * list(Term) * list(Term) -> (int * Mappings)
 
@@ -131,42 +131,42 @@ rules
 
   // Compare two terms, which belong to a rule pattern. The mappings contain variables that are already bound in the rule pattern.
   // The result is 0 if the terms allow the pattern to still be equal, 1 if not.
-  comparePattern : Term * Term * Mappings -> (int * Mappings)
+  compareTerms : Term * Term * Mappings -> (int * Mappings)
 
-  comparePattern(Int2Term(Int(x)), Int2Term(Int(x)), ms) = (0, ms).
+  compareTerms(Int2Term(Int(x)), Int2Term(Int(x)), ms) = (0, ms).
 
-  comparePattern(Str2Term(Str(x)), Str2Term(Str(x)), ms) = (0, ms).
+  compareTerms(Str2Term(Str(x)), Str2Term(Str(x)), ms) = (0, ms).
 
-  comparePattern(Var2Term(Wld()), Var2Term(Wld()), ms) = (0, ms).
-  comparePattern(Var2Term(Wld()), Var2Term(Var(y)), ms) = compareSingleVarHelper(lookupR(y, ms), ("#", y), ms).
-  comparePattern(Var2Term(Var(x)), Var2Term(Wld()), ms) = compareSingleVarHelper(lookupL(x, ms), (x, "#"), ms).
-  comparePattern(Var2Term(Var(x)), Var2Term(Var(y)), ms) = compareDoubleVarHelper(lookupL(x, ms), (x, y), ms).
+  compareTerms(Var2Term(Wld()), Var2Term(Wld()), ms) = (0, ms).
+  compareTerms(Var2Term(Wld()), Var2Term(Var(y)), ms) = compareSingleVarHelper(lookupR(y, ms), ("#", y), ms).
+  compareTerms(Var2Term(Var(x)), Var2Term(Wld()), ms) = compareSingleVarHelper(lookupL(x, ms), (x, "#"), ms).
+  compareTerms(Var2Term(Var(x)), Var2Term(Var(y)), ms) = compareDoubleVarHelper(lookupL(x, ms), (x, y), ms).
 
-  comparePattern(Tuple(xs), Tuple(ys), ms) = comparePatterns(xs, ys, ms).
+  compareTerms(Tuple(xs), Tuple(ys), ms) = comparePatterns(xs, ys, ms).
 
-  comparePattern(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
-  comparePattern(t1@List(_), t2@ListTail(_, _), ms) = compareListPatternHelper(t1, flattenListTail(t2), ms).
-  comparePattern(t1@ListTail(_, _), t2@List(_), ms) = compareListPatternHelper(flattenListTail(t1), t2, ms).
-  comparePattern(t1@ListTail(_, _), t2@ListTail(_, _), ms) = compareListPatternHelper(flattenListTail(t1), flattenListTail(t2), ms).
+  compareTerms(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
+  compareTerms(t1@List(_), t2@ListTail(_, _), ms) = compareListPatternHelper(t1, flattenListTail(t2), ms).
+  compareTerms(t1@ListTail(_, _), t2@List(_), ms) = compareListPatternHelper(flattenListTail(t1), t2, ms).
+  compareTerms(t1@ListTail(_, _), t2@ListTail(_, _), ms) = compareListPatternHelper(flattenListTail(t1), flattenListTail(t2), ms).
 
-  comparePattern(Op(id, Terms2CommaTerms(xs)), Op(id, Terms2CommaTerms(ys)), ms) = comparePatterns(xs, ys, ms).
+  compareTerms(Op(id, Terms2CommaTerms(xs)), Op(id, Terms2CommaTerms(ys)), ms) = comparePatterns(xs, ys, ms).
 
-  comparePattern(Ascribe(t1, _), t2, ms) = comparePattern(t1, t2, ms).
-  comparePattern(t1, Ascribe(t2, _), ms) = comparePattern(t1, t2, ms).
+  compareTerms(Ascribe(t1, _), t2, ms) = compareTerms(t1, t2, ms).
+  compareTerms(t1, Ascribe(t2, _), ms) = compareTerms(t1, t2, ms).
 
-  comparePattern(As(v1@Var(x), t1), As(v2@Var(y), t2), ms) =
-    comparePatternsHelper(comparePattern(Var2Term(v1), Var2Term(v2), ms), [t1], [t2]).
-  comparePattern(As(Wld(), t1), t2, ms) = comparePattern(t1, t2, ms).
-  comparePattern(As(Var(x), t1), t2, ms) = compareAsHelper(lookupL(x, ms), (x, "#"), t1, t2, ms).
-  comparePattern(t1, As(Wld(), t2), ms) = comparePattern(t1, t2, ms).
-  comparePattern(t1, As(Var(y), t2), ms) = compareAsHelper(lookupR(y, ms), ("#", y), t1, t2, ms).
+  compareTerms(As(v1@Var(x), t1), As(v2@Var(y), t2), ms) =
+    comparePatternsHelper(compareTerms(Var2Term(v1), Var2Term(v2), ms), [t1], [t2]).
+  compareTerms(As(Wld(), t1), t2, ms) = compareTerms(t1, t2, ms).
+  compareTerms(As(Var(x), t1), t2, ms) = compareAsHelper(lookupL(x, ms), (x, "#"), t1, t2, ms).
+  compareTerms(t1, As(Wld(), t2), ms) = compareTerms(t1, t2, ms).
+  compareTerms(t1, As(Var(y), t2), ms) = compareAsHelper(lookupR(y, ms), ("#", y), t1, t2, ms).
 
-  comparePattern(Path2Term(PathLit2Path(PathEmpty(st1))), Path2Term(PathLit2Path(PathEmpty(st2))), ms) = comparePattern(st1, st2, ms).
-  comparePattern(Path2Term(PathLit2Path(PathStep(pt1, lt1, st1))),
+  compareTerms(Path2Term(PathLit2Path(PathEmpty(st1))), Path2Term(PathLit2Path(PathEmpty(st2))), ms) = compareTerms(st1, st2, ms).
+  compareTerms(Path2Term(PathLit2Path(PathStep(pt1, lt1, st1))),
                  Path2Term(PathLit2Path(PathStep(pt2, lt2, st2))), ms)
-                 = comparePatternsHelper(comparePattern(pt1, pt2, ms), [lt1, st1], [lt2, st2]).
+                 = comparePatternsHelper(compareTerms(pt1, pt2, ms), [lt1, st1], [lt2, st2]).
 
-  comparePattern(_, _, ms) = (1, ms).
+  compareTerms(_, _, ms) = (1, ms).
 
 rules
 
@@ -195,11 +195,11 @@ rules
 
   compareAsHelper : string * Mapping * Term * Term * Mappings -> (int * Mappings)
 
-  compareAsHelper("?", m, t1, t2, ms) = comparePattern(t1, t2, [m|ms]).
+  compareAsHelper("?", m, t1, t2, ms) = compareTerms(t1, t2, [m|ms]).
   compareAsHelper(_, _, _, _, ms) = (1, ms).
 
   compareListPatternHelper : Term * Term * Mappings -> (int * Mappings)
 
   compareListPatternHelper(List(xs), List(ys), ms) = comparePatterns(xs, ys, ms).
-  compareListPatternHelper(ListTail(xs, xt), ListTail(ys, yt), ms) = comparePatternsHelper(comparePattern(xt, yt, ms), xs, ys).
+  compareListPatternHelper(ListTail(xs, xt), ListTail(ys, yt), ms) = comparePatternsHelper(comparePatterns(xs, ys, ms), [xt], [yt]).
   compareListPatternHelper(_, _, ms) = (1, ms).
