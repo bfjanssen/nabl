@@ -414,8 +414,8 @@ rules // multi file analysis
     ; initial-cached-state* := <filter(?(_, Cached(FileAnalysis(<id>, _, _, _))))> change*
     ; final-project-state := <stx--solve-multi-project(|spec, initial-project-state, level, progress, cancel)> [initial-file-state*, initial-cached-state*]
     ; (error*, warning*, note*) := <stx--delays-as-errors(|config);stx--extract-messages(|config)> final-project-state
-    ; custom-analysis* := <map(?(_, Full(_, FileAnalysis(_, _, <id>), _, _, _)))> initial-file-result*
-    ; cached-custom-analysis* := <filter(?(_, Cached(FileAnalysis(_, _, <id>))))> change*
+    ; custom-analysis* := <map(?(_, Full(_, FileAnalysis(_, _, <id>, _), _, _, _)))> initial-file-result*
+    ; cached-custom-analysis* := <filter(?(_, Cached(FileAnalysis(_, _, <id>, _))))> change*
     ; (c-e*, c-w*, c-n*, custom-analysis) := <analyze-final> (final-project-state, [custom-analysis*, cached-custom-analysis*])
     ; project-analysis := ProjectAnalysis(global-scope, global-scope-state, initial-project-state, final-project-state, custom-analysis)
     ; file-result* := <map((id, Full(id, FileAnalysis(id, !final-project-state, id, !custom-analysis), id, id, id)))> initial-file-result*
