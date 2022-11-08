@@ -11,6 +11,6 @@ imports
 
 language
 
-  extensions : stx2, stx2test
+  extensions : stx, stxtest
 
   provider : target/metaborg/stratego.jar
