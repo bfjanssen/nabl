@@ -656,7 +656,7 @@ public class StatixSolver {
                         }
 
                         @Override public IFuture<? extends java.util.Set<IResolutionPath<Scope, ITerm, ITerm>>> caseCompiledQuery(CCompiledQuery q) {
-                            return scopeGraph.query(scope, q.stateMachine(), labelWF, dataWF, dataEquiv,
+                            return scopeGraph.query(scope, q.stateMachine(), dataWF, dataEquiv,
                                     dataWFInternal, dataEquivInternal);
                         }
 
@@ -1129,16 +1129,60 @@ public class StatixSolver {
             }
         }
 
+        private Set.Immutable<Scope> scopes;
+
         @Override public Immutable<Scope> scopes() {
-            return Patching.ruleScopes(constraint);
+            Set.Immutable<Scope> result = scopes;
+            if(result == null) {
+                result = Patching.ruleScopes(constraint);
+                scopes = result;
+            }
+            return result;
         }
 
         @Override public DataWf<Scope, ITerm, ITerm> patch(IPatchCollection.Immutable<Scope> patches) {
-            return new ConstraintDataWF(spec, Patching.patch(constraint, patches));
+            final Rule newRule = Patching.patch(constraint, patches);
+            if(newRule == null) {
+                return this;
+            }
+            return new ConstraintDataWF(spec, newRule);
         }
 
         @Override public String toString() {
             return constraint.toString();
+        }
+
+        @Override public boolean equals(Object obj) {
+            if(obj == this) {
+                return true;
+            }
+
+            if(obj == null || obj.getClass() != this.getClass()) {
+                return false;
+            }
+
+            final ConstraintDataWF other = (ConstraintDataWF) obj;
+
+            final int h = hashCode;
+            final int oh = other.hashCode;
+
+            if(h != oh && h != 0 && oh != 0) {
+                return false;
+            }
+
+            // TODO: test alpha equivalence?
+            return constraint.equals(other.constraint);
+        }
+
+        private volatile int hashCode = 0;
+
+        @Override public int hashCode() {
+            int result = hashCode;
+            if(result == 0) {
+                result = constraint.hashCode();
+                hashCode = result;
+            }
+            return result;
         }
 
     }
@@ -1261,6 +1305,39 @@ public class StatixSolver {
 
         @Override public String toString() {
             return constraint.toString(state.unifier()::toString);
+        }
+
+        @Override public boolean equals(Object obj) {
+            if(obj == this) {
+                return true;
+            }
+
+            if(obj == null || obj.getClass() != this.getClass()) {
+                return false;
+            }
+
+            final ConstraintDataEquiv other = (ConstraintDataEquiv) obj;
+
+            final int h = hashCode;
+            final int oh = other.hashCode;
+
+            if(h != oh && h != 0 && oh != 0) {
+                return false;
+            }
+
+            // TODO: test alpha equivalence?
+            return constraint.equals(other.constraint);
+        }
+
+        private volatile int hashCode = 0;
+
+        @Override public int hashCode() {
+            int result = hashCode;
+            if(result == 0) {
+                result = constraint.hashCode();
+                hashCode = result;
+            }
+            return result;
         }
 
     }

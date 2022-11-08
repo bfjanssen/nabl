@@ -20,7 +20,6 @@ import org.metaborg.util.collection.CapsuleUtil;
 import org.metaborg.util.collection.HashTrieRelation3;
 import org.metaborg.util.collection.IRelation3;
 import org.metaborg.util.collection.MultiSet;
-import org.metaborg.util.collection.MultiSetMap;
 import org.metaborg.util.functions.Function1;
 import org.metaborg.util.functions.Function2;
 import org.metaborg.util.future.AggregateFuture;
@@ -39,6 +38,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.Streams;
 
 import io.usethesource.capsule.Set;
@@ -78,7 +78,8 @@ import mb.p_raffrayi.nameresolution.IResolutionContext;
 import mb.p_raffrayi.nameresolution.IQuery;
 import mb.p_raffrayi.nameresolution.NameResolutionQuery;
 import mb.p_raffrayi.nameresolution.StateMachineQuery;
-import mb.p_raffrayi.nameresolution.tracing.ExtQueries;
+import mb.p_raffrayi.nameresolution.tracing.ExtQuerySet;
+import mb.p_raffrayi.nameresolution.tracing.ExtQuerySets;
 import mb.scopegraph.ecoop21.LabelOrder;
 import mb.scopegraph.ecoop21.LabelWf;
 import mb.scopegraph.oopsla20.IScopeGraph;
@@ -237,6 +238,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             logger.debug("{} type checker finished", id);
             resume(); // FIXME necessary?
             if(isDifferEnabled()) {
+                self.assertOnActorThread();
                 whenDifferActivated.thenAccept(__ -> differ.typeCheckerFinished());
             }
             if(ex != null) {
@@ -246,7 +248,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 analysis.set(r);
             }
             granted(token, self);
-            final MultiSet.Immutable<IWaitFor<S, L, D>> selfTokens = getTokens(process);
+            final Multiset<IWaitFor<S, L, D>> selfTokens = getTokens(process);
             if(!selfTokens.isEmpty()) {
                 logger.debug("{} returned while waiting on {}", self, selfTokens);
             }
@@ -265,7 +267,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         logger.debug("Initializing differ: {} with scopes: {} ~ {}.", differ, currentRootScopes, previousRootScopes);
         this.differ = differ;
         doFinishDiffer(differ.diff(currentRootScopes, previousRootScopes));
-        self.complete(whenDifferActivated, Unit.unit, null);
+        whenDifferActivated.complete(Unit.unit);
     }
 
     protected void initDiffer(IScopeGraphDiffer<S, L, D> differ, IScopeGraph.Immutable<S, L, D> scopeGraph,
@@ -275,7 +277,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         logger.debug("Initializing differ: {} with initial scope graph: {}.", differ, scopeGraph);
         this.differ = differ;
         doFinishDiffer(differ.diff(scopeGraph, scopes, sharedScopes, patches, openScopes, openEdges));
-        self.complete(whenDifferActivated, Unit.unit, null);
+        whenDifferActivated.complete(Unit.unit);
     }
 
     private void doFinishDiffer(IFuture<ScopeGraphDiff<S, L, D>> future) {
@@ -329,7 +331,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         final IFuture<IUnitResult<S, L, D, U>> ret = internalResult.whenComplete((r, ex) -> {
             logger.debug("{} subunit {} finished", this, subunit);
             granted(token, subunit);
-            resume();
+            // resume(); // FIXME needed?
             if(ex != null) {
                 failures.add(new Exception("No result for sub unit " + id));
             } else if(!ignoreResult) {
@@ -391,7 +393,6 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 differ.match(previousScope).whenComplete(future::complete);
                 future.whenComplete((r, ex) -> {
                     granted(state, self);
-                    resume(); // FIXME needed?
                 });
                 return future;
             });
@@ -423,7 +424,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         assertOwnOrSharedScope(scope);
 
         granted(InitScope.of(self, scope), sender);
-        resume(); // FIXME necessary?
+        // resume(); // seems unnecessary (tested with unit tests + CSV-IO)
 
         for(EdgeOrData<L> edge : edges) {
             waitFor(CloseLabel.of(self, scope, edge), sender);
@@ -453,7 +454,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         assertOwnOrSharedScope(scope);
 
         granted(CloseScope.of(self, scope), sender);
-        resume(); // FIXME necessary?
+        // resume(); // seems unnecessary (tested with unit tests + CSV-IO)
 
         if(isScopeInitialized(scope)) {
             releaseDelays(scope);
@@ -468,7 +469,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         assertOwnOrSharedScope(scope);
 
         granted(CloseLabel.of(self, scope, edge), sender);
-        resume(); // FIXME necessary?
+        // resume(); // seems unnecessary (tested with unit tests + CSV-IO)
 
         if(isEdgeClosed(scope, edge)) {
             releaseDelays(scope, edge);
@@ -500,10 +501,10 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
 
         final boolean external = !sender.equals(self);
 
-        final Ref<IResolutionContext<S, L, D, ExtQueries<S, L, D>>> context = new Ref<>();
-        context.set(new IResolutionContext<S, L, D, ExtQueries<S, L, D>>() {
+        final Ref<IResolutionContext<S, L, D, ExtQuerySet<S, L, D>>> context = new Ref<>();
+        context.set(new IResolutionContext<S, L, D, ExtQuerySet<S, L, D>>() {
 
-            @Override public IFuture<Tuple2<Env<S, L, D>, ExtQueries<S, L, D>>> externalEnv(ScopePath<S, L> path,
+            @Override public IFuture<Tuple2<Env<S, L, D>, ExtQuerySet<S, L, D>>> externalEnv(ScopePath<S, L> path,
                     IQuery<S, L, D> query, ICancel cancel) {
                 final S scope = path.getTarget();
                 if(canAnswer(scope)) {
@@ -530,8 +531,8 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                             stats.outgoingQueries += 1;
                         }
                         return result.thenApply(ans -> {
-                            ExtQueries.Builder<S, L, D> extQueriesBuilder =
-                                    ExtQueries.<S, L, D>builder().from(ExtQueries.empty());
+                            ExtQuerySet.Builder<S, L, D> extQueriesBuilder =
+                                    ExtQuerySet.<S, L, D>builder().from(ExtQuerySets.empty());
                             if(isQueryRecordingEnabled()) {
                                 extQueriesBuilder.addAllTransitiveQueries(ans.transitiveQueries());
                                 extQueriesBuilder.addAllPredicateQueries(ans.predicateQueries());
@@ -569,9 +570,9 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                             ret = internalResult.whenComplete((rep, ex) -> {
                                 self.assertOnActorThread();
                                 granted(token, self);
-                                resume();
+                                // resume();
                             });
-                            resume();
+                            // resume();
                         }
                         return ret.thenApply(rep -> {
                             logger.debug("got external rep {} for {}", rep, datum.get());
@@ -589,7 +590,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 });
             }
 
-            @Override public IFuture<Tuple2<Boolean, ExtQueries<S, L, D>>> dataWf(D d, ICancel cancel)
+            @Override public IFuture<Tuple2<Boolean, ExtQuerySet<S, L, D>>> dataWf(D d, ICancel cancel)
                     throws InterruptedException {
                 stats.dataWfChecks += 1;
                 final IFuture<Boolean> result;
@@ -601,7 +602,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 } else {
                     result = dataWfInternal.wf(d, queryContext, cancel);
                 }
-                if(future.isDone()) {
+                if(result.isDone()) {
                     result.whenComplete(future::complete);
                 } else {
                     final ICompletableFuture<Boolean> internalResult = new CompletableFuture<>();
@@ -617,11 +618,11 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 }
                 return future.thenApply(wf -> {
                     return Tuple2.of(wf,
-                            ExtQueries.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
+                            ExtQuerySet.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
                 });
             }
 
-            @Override public IFuture<Tuple2<Boolean, ExtQueries<S, L, D>>> dataEquiv(D d1, D d2, ICancel cancel)
+            @Override public IFuture<Tuple2<Boolean, ExtQuerySet<S, L, D>>> dataEquiv(D d1, D d2, ICancel cancel)
                     throws InterruptedException {
                 stats.dataLeqChecks += 1;
                 final IFuture<Boolean> result;
@@ -650,7 +651,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
 
                 return future.thenApply(wf -> {
                     return Tuple2.of(wf,
-                            ExtQueries.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
+                            ExtQuerySet.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
                 });
             }
 
@@ -664,17 +665,17 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 });
             }
 
-            @Override public ExtQueries<S, L, D> unitMetadata() {
-                return ExtQueries.empty();
+            @Override public ExtQuerySet<S, L, D> unitMetadata() {
+                return ExtQuerySets.empty();
             }
 
-            @Override public ExtQueries<S, L, D> compose(ExtQueries<S, L, D> queries1, ExtQueries<S, L, D> queries2) {
+            @Override public ExtQuerySet<S, L, D> compose(ExtQuerySet<S, L, D> queries1, ExtQuerySet<S, L, D> queries2) {
                 return queries1.addQueries(queries2);
             }
 
         });
 
-        final IFuture<Tuple2<Env<S, L, D>, ExtQueries<S, L, D>>> result =
+        final IFuture<Tuple2<Env<S, L, D>, ExtQuerySet<S, L, D>>> result =
                 context.get().externalEnv(path, query, this.context.cancel());
 
         result.whenComplete((env, ex) -> {
@@ -734,7 +735,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 return CapsuleUtil.<IResolutionPath<S, L, D>>toSet(ans.env());
             }).whenComplete((ans, ex) -> {
                 granted(wf, self);
-                resume(); // FIXME needed?
+                // resume(); // seems unnecessary (unit tests + CSV IO)
             });
         }
 
@@ -746,9 +747,9 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         }
 
         @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope,
-                StateMachine<L> stateMachine, LabelWf<L> labelWf, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
+                StateMachine<L> stateMachine, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
                 DataWf<S, L, D> dataWfInternal, DataLeq<S, L, D> dataEquivInternal) {
-            return this.query(scope, new StateMachineQuery<>(stateMachine, labelWf), dataWF, dataEquiv, dataWfInternal,
+            return this.query(scope, new StateMachineQuery<>(stateMachine), dataWF, dataEquiv, dataWfInternal,
                     dataEquivInternal);
         }
 
@@ -780,7 +781,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             IScopeGraph.Immutable<S, L, D> scopeGraph, ScopePath<S, L> path, IQuery<S, L, D> query,
             DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv) {
         logger.debug("rec pquery from {}", sender);
-        final IResolutionContext<S, L, D, ExtQueries<S, L, D>> context =
+        final IResolutionContext<S, L, D, ExtQuerySet<S, L, D>> context =
                 new StaticNameResolutionContext(sender, scopeGraph, dataWF, dataEquiv);
 
         return query.resolve(context, path, this.context.cancel()).thenApply(env -> {
@@ -803,7 +804,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         // Due to the synchronous nature of the Broker, this future may be completed by
         // another unit's thread. Hence we wrap it in self.schedule, so we do not break
         // the actor abstraction.
-        self.schedule(context.owner(scope)).whenComplete((r, ex) -> {
+        self.schedule(future).whenComplete((r, ex) -> {
             self.assertOnActorThread();
             granted(unitAdd, broker);
             result.complete(r, ex);
@@ -825,30 +826,29 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
     // Wait fors & finalization
     ///////////////////////////////////////////////////////////////////////////
 
-    private MultiSet.Immutable<IWaitFor<S, L, D>> waitFors = MultiSet.Immutable.of();
-    private MultiSetMap.Immutable<IProcess<S, L, D>, IWaitFor<S, L, D>> waitForsByProcess = MultiSetMap.Immutable.of();
+    private WaitForGraph<IProcess<S, L, D>, IWaitFor<S, L, D>> wfg = new WaitForGraph<>();
 
     protected boolean isWaiting() {
-        return !waitFors.isEmpty();
+        return wfg.isWaiting();
     }
 
     protected boolean isWaitingFor(IWaitFor<S, L, D> token) {
-        return waitFors.contains(token);
+        return wfg.isWaitingFor(token);
     }
 
     protected boolean isWaitingFor(IWaitFor<S, L, D> token, IActor<? extends IUnit<S, L, D, ?>> from) {
-        return waitForsByProcess.get(new UnitProcess<>(from)).contains(token);
+        return wfg.isWaitingFor(new UnitProcess<>(from), token);
     }
 
     protected int countWaitingFor(IWaitFor<S, L, D> token, IActorRef<? extends IUnit<S, L, D, ?>> from) {
-        return waitForsByProcess.get(new UnitProcess<>(from)).count(token);
+        return wfg.countWaitingFor(new UnitProcess<>(from), token);
     }
 
-    private MultiSet.Immutable<IWaitFor<S, L, D>> getTokens(IProcess<S, L, D> unit) {
-        return waitForsByProcess.get(unit);
+    private Multiset<IWaitFor<S, L, D>> getTokens(IProcess<S, L, D> unit) {
+        return wfg.getTokens(unit);
     }
 
-    protected MultiSet.Immutable<IWaitFor<S, L, D>> ownTokens() {
+    protected Multiset<IWaitFor<S, L, D>> ownTokens() {
         return getTokens(process);
     }
 
@@ -857,12 +857,19 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
     }
 
     protected void waitFor(IWaitFor<S, L, D> token, IProcess<S, L, D> process) {
-        if(!waitForsByProcess.containsKey(process)) {
+        if(wfg.waitFor(process, token)) {
             resume();
         }
-        logger.debug("{} wait for {}/{}", self, process, token);
-        waitFors = waitFors.add(token);
-        waitForsByProcess = waitForsByProcess.put(process, token);
+    }
+
+    protected void waitFor(IActorRef<? extends IUnit<S, L, D, ?>> actor) {
+        waitFor(process(actor));
+    }
+
+    protected void waitFor(IProcess<S, L, D> process) {
+        if(wfg.waitFor(process)) {
+            resume();
+        }
     }
 
     protected void granted(IWaitFor<S, L, D> token, IActorRef<? extends IUnit<S, L, D, ?>> actor) {
@@ -870,14 +877,17 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
     }
 
     protected void granted(IWaitFor<S, L, D> token, IProcess<S, L, D> process) {
-        if(!waitForsByProcess.contains(process, token)) {
-            logger.error("{} not waiting for granted {}/{}", self, process, token);
-            throw new IllegalStateException(self + " not waiting for granted " + process + "/" + token);
+        if(wfg.granted(process, token)) {
+            resume();
         }
-        logger.debug("{} granted {} by {}", self, token, process);
-        waitFors = waitFors.remove(token);
-        waitForsByProcess = waitForsByProcess.remove(process, token);
-        if(!waitForsByProcess.containsKey(process)) {
+    }
+
+    protected void granted(IActorRef<? extends IUnit<S, L, D, ?>> actor) {
+        granted(process(actor));
+    }
+
+    protected void granted(IProcess<S, L, D> process) {
+        if(wfg.granted(process)) {
             resume();
         }
     }
@@ -896,7 +906,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         if(innerResult && !unitResult.isDone() && !isWaiting()) {
             logger.debug("{} finish", this);
             // @formatter:off
-            unitResult.complete(UnitResult.<S, L, D, R>builder()
+            final UnitResult<S, L, D, R> result = UnitResult.<S, L, D, R>builder()
                 .id(self.id())
                 .scopeGraph(scopeGraph.get())
                 .queries(recordedQueries)
@@ -908,11 +918,11 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                 .stats(stats)
                 .stateTransitionTrace(stateTransitionTrace)
                 .diff(diffResult.get())
-                .build()
-            );
+                .build();
             // @formatter:on
+            self.complete(unitResult, result, null);
         } else {
-            logger.trace("Still waiting for {}{}", innerResult ? "inner result and " : "", waitForsByProcess);
+            logger.trace("Still waiting for {}{}", !innerResult ? "inner result and " : "", wfg);
         }
     }
 
@@ -976,7 +986,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
 
     }
 
-    protected final class StaticNameResolutionContext implements IResolutionContext<S, L, D, ExtQueries<S, L, D>> {
+    protected final class StaticNameResolutionContext implements IResolutionContext<S, L, D, ExtQuerySet<S, L, D>> {
 
         private final IActorRef<? extends IUnit<S, L, D, ?>> sender;
         private final DataLeq<S, L, D> dataLeq;
@@ -991,7 +1001,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             this.dataLeq = dataLeq;
         }
 
-        @Override public IFuture<Tuple2<Env<S, L, D>, ExtQueries<S, L, D>>> externalEnv(ScopePath<S, L> path,
+        @Override public IFuture<Tuple2<Env<S, L, D>, ExtQuerySet<S, L, D>>> externalEnv(ScopePath<S, L> path,
                 IQuery<S, L, D> query, ICancel cancel) {
             final S scope = path.getTarget();
             if(canAnswer(scope)) {
@@ -1001,15 +1011,15 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
 
             return getOwner(scope).thenCompose(owner -> {
                 logger.debug("remote p_env from {}", owner);
-                final ICompletableFuture<Tuple2<Env<S, L, D>, ExtQueries<S, L, D>>> future = new CompletableFuture<>();
+                final ICompletableFuture<Tuple2<Env<S, L, D>, ExtQuerySet<S, L, D>>> future = new CompletableFuture<>();
                 final PQuery<S, L, D> pQuery = PQuery.of(sender, path, dataWf, future);
                 waitFor(pQuery, owner);
                 self.async(owner)._queryPrevious(path, query, dataWf, dataLeq).whenComplete((env, ex) -> {
                     logger.debug("got p_env from {}", sender);
                     granted(pQuery, owner);
                     future.complete(
-                            Tuple2.of(env.env(), ExtQueries.of(env.transitiveQueries(), env.predicateQueries())), ex);
-                    resume();
+                            Tuple2.of(env.env(), ExtQuerySet.of(env.transitiveQueries(), env.predicateQueries())), ex);
+                    // resume(); // FIXME needed?
                 });
 
                 return future;
@@ -1025,19 +1035,19 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             return CompletableFuture.completedFuture(scopeGraph.getEdges(scope, label));
         }
 
-        @Override public IFuture<Tuple2<Boolean, ExtQueries<S, L, D>>> dataWf(D datum, ICancel cancel)
+        @Override public IFuture<Tuple2<Boolean, ExtQuerySet<S, L, D>>> dataWf(D datum, ICancel cancel)
                 throws InterruptedException {
             final StaticQueryContext queryContext = new StaticQueryContext(sender, scopeGraph);
             return dataWf.wf(datum, queryContext, cancel).thenApply(wf -> {
-                return Tuple2.of(wf, ExtQueries.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
+                return Tuple2.of(wf, ExtQuerySet.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
             });
         }
 
-        @Override public IFuture<Tuple2<Boolean, ExtQueries<S, L, D>>> dataEquiv(D d1, D d2, ICancel cancel)
+        @Override public IFuture<Tuple2<Boolean, ExtQuerySet<S, L, D>>> dataEquiv(D d1, D d2, ICancel cancel)
                 throws InterruptedException {
             final StaticQueryContext queryContext = new StaticQueryContext(sender, scopeGraph);
             return dataLeq.leq(d1, d2, queryContext, cancel).thenApply(wf -> {
-                return Tuple2.of(wf, ExtQueries.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
+                return Tuple2.of(wf, ExtQuerySet.<S, L, D>builder().addAllPredicateQueries(queryContext.dispose()).build());
             });
         }
 
@@ -1051,11 +1061,11 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             });
         }
 
-        @Override public ExtQueries<S, L, D> unitMetadata() {
-            return ExtQueries.empty();
+        @Override public ExtQuerySet<S, L, D> unitMetadata() {
+            return ExtQuerySets.empty();
         }
 
-        @Override public ExtQueries<S, L, D> compose(ExtQueries<S, L, D> queries1, ExtQueries<S, L, D> queries2) {
+        @Override public ExtQuerySet<S, L, D> compose(ExtQuerySet<S, L, D> queries1, ExtQuerySet<S, L, D> queries2) {
             return queries1.addQueries(queries2);
         }
 
@@ -1082,7 +1092,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope,
                 IQuery<S, L, D> query, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
                 DataWf<S, L, D> dataWfInternal, DataLeq<S, L, D> dataEquivInternal) {
-            final IResolutionContext<S, L, D, ExtQueries<S, L, D>> pContext =
+            final IResolutionContext<S, L, D, ExtQuerySet<S, L, D>> pContext =
                     new StaticNameResolutionContext(sender, scopeGraph, dataWF, dataEquiv);
 
             return query.resolve(pContext, new ScopePath<>(scope), context.cancel()).thenApply(ans -> {
@@ -1104,9 +1114,9 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         }
 
         @Override public IFuture<? extends java.util.Set<IResolutionPath<S, L, D>>> query(S scope,
-                StateMachine<L> stateMachine, LabelWf<L> labelWf, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
+                StateMachine<L> stateMachine, DataWf<S, L, D> dataWF, DataLeq<S, L, D> dataEquiv,
                 DataWf<S, L, D> dataWfInternal, DataLeq<S, L, D> dataEquivInternal) {
-            return query(scope, new StateMachineQuery<>(stateMachine, labelWf), dataWF, dataEquiv, dataWfInternal,
+            return query(scope, new StateMachineQuery<>(stateMachine), dataWF, dataEquiv, dataWfInternal,
                     dataEquivInternal);
         }
 
@@ -1337,7 +1347,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             }
         }
         for(ICompletable<?> future : deadlocked) {
-            self.complete(future, null, new DeadlockException("Type checker deadlocked."));
+            self.complete(future, null, new DeadlockException("Type checker " + self.id() + " deadlocked."));
         }
         return !deadlocked.isEmpty();
     }
@@ -1355,7 +1365,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
     private void failAll() {
         // Grants are processed immediately, while the result failure is scheduled.
         // This ensures that all labels are closed by the time the result failure is processed.
-        for(IWaitFor<S, L, D> wf : waitFors) {
+        for(IWaitFor<S, L, D> wf : CapsuleUtil.toSet(wfg.getTokens())) {
             // @formatter:off
             wf.visit(IWaitFor.cases(
                 initScope -> {
@@ -1427,6 +1437,8 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
             ));
             // @formatter:on
         }
+
+
     }
 
     protected boolean isIncrementalEnabled() {
@@ -1450,7 +1462,7 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
     }
 
     @Override public java.util.Set<IProcess<S, L, D>> dependentSet() {
-        return waitForsByProcess.keySet();
+        return wfg.dependencies();
     }
 
     @Override public void query(IProcess<S, L, D> k, IProcess<S, L, D> i, int m) {
@@ -1461,6 +1473,10 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         k.from(self, context)._deadlockReply(i, m, R);
     }
 
+    @Override public void assertOnActorThread() {
+        self.assertOnActorThread();
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Scope graph diffing
     ///////////////////////////////////////////////////////////////////////////
@@ -1469,12 +1485,24 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
         return new IDifferContext<S, L, D>() {
 
             @Override public IFuture<Iterable<S>> getEdges(S scope, L label) {
-                return isComplete(scope, EdgeOrData.edge(label), self).thenApply(__ -> {
-                    if(scope.toString().contains("d_40") && label.toString().contains("var")) {
-                        logger.debug("Returning susceptible edges.");
+                final IFuture<Unit> complete = isComplete(scope, EdgeOrData.edge(label), self);
+                if(complete.isDone()) {
+                    return CompletableFuture.completedFuture(scopeGraph.get().getEdges(scope, label));
+                }
+
+                final ICompletableFuture<Iterable<S>> result = new CompletableFuture<>();
+                complete.whenComplete((__, ex) -> {
+                    if(ex != null) {
+                        if(ex instanceof DeadlockException) {
+                            getEdges(scope, label).whenComplete(result::complete);
+                        } else {
+                            result.completeExceptionally(ex);
+                        }
+                    } else {
+                        result.complete(scopeGraph.get().getEdges(scope, label));
                     }
-                    return scopeGraph.get().getEdges(scope, label);
                 });
+                return result;
             }
 
             @Override public IFuture<Optional<D>> datum(S scope) {
@@ -1492,7 +1520,6 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                     getExternalDatum(datum.get()).whenComplete(future::complete);
                     return future.whenComplete((r, ex) -> {
                         granted(state, self);
-                        resume(); // FIXME necessary?
                     }).thenApply(Optional::of);
                 });
             }
@@ -1544,7 +1571,6 @@ public abstract class AbstractUnit<S, L, D, R> implements IUnit<S, L, D, R>, IAc
                     waitFor(match, owner);
                     return self.async(owner)._match(previousScope).whenComplete((__, ___) -> {
                         granted(match, owner);
-                        resume();
                     });
                 });
             }
