@@ -601,7 +601,9 @@ rules
 
   stx--get-custom-file-analysis = ?FileAnalysis(_, _, <id>, _)
 
-  stx--get-custom-analysis = ?ProjectAnalysis(_, _, _, _, <id>) + ?ProjectAnalysis(_, _, <id>)
+  stx--get-custom-analysis =
+    ?ProjectAnalysis(_, _, _, _, <id>) + ?ProjectAnalysis(_, _, <id>)
+    + ?FileAnalysis(_, _, _, <id>)
 
   stx--is-debug-custom-enabled =
     prim("SG_is_debug_custom_enabled")
