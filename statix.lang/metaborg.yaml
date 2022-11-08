@@ -1,6 +1,6 @@
 ---
-id: org.metaborg:statix2.lang:${metaborgVersion}
-name: Statix2Lang
+id: org.metaborg:statix.lang:${metaborgVersion}
+name: StatixLang
 metaborgBaselineVersion: 2.5.17
 dependencies:
   compile:
