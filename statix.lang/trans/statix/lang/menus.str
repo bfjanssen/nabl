@@ -182,7 +182,7 @@ rules //Compare Aterms
    compare-all(|stx-results): (p, object) -> x
                             with if <equal(|".")> p then x := () else
                                    Full(ast-nabl, CompatUnitAnalysis(_, a-nabl), _, _, _) := object;
-                                   Full(ast-stx, FileAnalysis(_, a-stx, _), _, _, _) := <getfirst(?(p, <id>))> stx-results;
+                                   Full(ast-stx, FileAnalysis(_, a-stx, _, _), _, _, _) := <getfirst(?(p, <id>))> stx-results;
                                    aterm := <generate-aterm'(|a-stx)> ast-stx;
                                    legacy-aterm := <generate-aterm-legacy'(|a-nabl)> ast-nabl;
                                    if compare-aterms'(|aterm, legacy-aterm) then
