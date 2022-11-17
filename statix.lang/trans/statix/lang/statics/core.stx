@@ -1,7 +1,7 @@
 module statix/lang/statics/core
 
 imports
-  signatures/Statix2Lang-sig
+  signatures/StatixLang-sig
   signatures/statix/lang/Core-sig
   signatures/statix/lang/Sugar-sig
   signatures/statix/lang/NoParse-sig

@@ -1,4 +1,4 @@
-module Statix2Lang
+module StatixLang
 
 imports
 

@@ -1,4 +1,4 @@
-package statix2.lang.strategies;
+package statix.lang.strategies;
 
 import java.util.Arrays;
 import java.util.HashMap;

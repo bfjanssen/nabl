@@ -65,6 +65,6 @@ rules
 
   // FIXME These should be generated from the grammar
 
-  Statix2LangParenthesize = CConj(!Parenthetical(<?CExists(_, _)>), id)
+  StatixLangParenthesize = CConj(!Parenthetical(<?CExists(_, _)>), id)
 
-  Statix2LangParenthesize = CConj(id, !Parenthetical(<?CExists(_, _)>))
+  StatixLangParenthesize = CConj(id, !Parenthetical(<?CExists(_, _)>))
