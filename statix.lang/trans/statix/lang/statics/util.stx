@@ -165,6 +165,7 @@ rules
   resolveSort(s, id) = ps :-
     query sort
         filter P*I* and { x :- x == id }
+        min $ < I
         in s |-> ps.
 
   typeOfSort(s, id) = T :- {id'}
@@ -207,6 +208,7 @@ rules
   resolveCons(s, id, arity) = ps :-
     query cons
         filter P*I* and { (x, y) :- x == id, y == arity }
+        min $ < I
         in s |-> ps.
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
