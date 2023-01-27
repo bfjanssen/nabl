@@ -66,6 +66,8 @@ public class Solver {
             throws InterruptedException {
         final GreedySolver solver = new GreedySolver(spec, state, constraint, isComplete, debug, progress, cancel, flags);
         final IUniDisunifier unifier = solver.state.unifier();
+        final Thread solverThread = Thread.currentThread();
+
         final Thread watchdog = new Thread(() -> {
             try {
                 Thread.sleep(30_000);
@@ -79,6 +81,9 @@ public class Solver {
                             sb.append(traceElement);
                         });
                         System.err.println(sb.toString());
+                    }
+                    for(StackTraceElement ste : solverThread.getStackTrace()) {
+                        System.err.println(ste);
                     }
                     Thread.sleep(5_000);
                 }
