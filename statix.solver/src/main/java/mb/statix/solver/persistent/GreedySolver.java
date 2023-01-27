@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.metaborg.util.log.Level;
 import org.metaborg.util.task.ICancel;
@@ -114,7 +115,7 @@ class GreedySolver {
     private final ICancel cancel;
     private final int flags;
 
-    private IState.Immutable state;
+    public IState.Immutable state;
     private ICompleteness.Immutable completeness;
     private Map<ITermVar, ITermVar> existentials = null;
     private final List<ITermVar> updatedVars = Lists.newArrayList();
@@ -123,6 +124,8 @@ class GreedySolver {
 
     private int solved = 0;
     private int criticalEdges = 0;
+
+    public final AtomicReference<IConstraint> currentConstraint = new AtomicReference<>();
 
     public GreedySolver(Spec spec, IState.Immutable state, IConstraint initialConstraint, IsComplete _isComplete,
             IDebugContext debug, IProgress progress, ICancel cancel, int flags) {
@@ -310,6 +313,7 @@ class GreedySolver {
 
     private boolean step(IConstraint constraint, int fuel) throws InterruptedException {
         try {
+            currentConstraint.set(constraint);
             return k(constraint, fuel);
         } catch(InterruptedException | SolverFatalErrorException e) {
             throw e;

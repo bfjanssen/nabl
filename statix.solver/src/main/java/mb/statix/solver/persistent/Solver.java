@@ -30,6 +30,7 @@ import mb.scopegraph.oopsla20.reference.FastNameResolution;
 import mb.statix.concurrent.StatixSolver;
 import mb.statix.constraints.Constraints;
 import mb.statix.constraints.messages.IMessage;
+import mb.statix.constraints.messages.MessageUtil;
 import mb.statix.scopegraph.Scope;
 import mb.statix.solver.Delay;
 import mb.statix.solver.IConstraint;
@@ -63,7 +64,32 @@ public class Solver {
     public static SolverResult solve(final Spec spec, final IState.Immutable state, final IConstraint constraint,
             final IsComplete isComplete, final IDebugContext debug, final ICancel cancel, IProgress progress, int flags)
             throws InterruptedException {
-        return new GreedySolver(spec, state, constraint, isComplete, debug, progress, cancel, flags).solve();
+        final GreedySolver solver = new GreedySolver(spec, state, constraint, isComplete, debug, progress, cancel, flags);
+        final IUniDisunifier unifier = solver.state.unifier();
+        final Thread watchdog = new Thread(() -> {
+            try {
+                Thread.sleep(30_000);
+                while(true) {
+                    final IConstraint c = solver.currentConstraint.get();
+                    if(c != null) {
+                        final StringBuilder sb = new StringBuilder("Current constraint:");
+                        final TermFormatter formatter = Solver.shallowTermFormatter(unifier, Solver.ERROR_TRACE_TERM_DEPTH);
+                        MessageUtil.formatTrace(constraint, unifier, formatter, -1).forEach(traceElement -> {
+                            sb.append("\n\t- ");
+                            sb.append(traceElement);
+                        });
+                        System.err.println(sb.toString());
+                    }
+                    Thread.sleep(5_000);
+                }
+            } catch(InterruptedException e) {
+                return;
+            }
+        });
+        watchdog.start();
+        final SolverResult result = solver.solve();
+        watchdog.interrupt();
+        return result;
     }
 
     public static SolverResult solve(final Spec spec, final IState.Immutable state, final IConstraint constraint,
