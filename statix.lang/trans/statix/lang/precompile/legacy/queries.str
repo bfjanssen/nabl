@@ -39,7 +39,7 @@ rules
   precompile-queries-legacy(|a) = bottomup(try(precompile-query-legacy(|a)))
 
   precompile-query-legacy(|a):
-    q@CResolveQuery(rel, filter, min, s, pst, msg) -> CPreCompiledQuery(q, cstate*, initial)
+    q@CResolveQuery(rel, filter, min, prj, s, pst, msg) -> CPreCompiledQuery(q, cstate*, initial)
     with {| LblRef: with(
       rules(LblRef: EOP() -> EOP())
     ; Filter(lbl-re, _) := filter

@@ -7,7 +7,7 @@ dependencies:
   - org.metaborg:org.metaborg.meta.lang.esv:${metaborgBaselineVersion}
   - org.metaborg:org.metaborg.meta.lang.template:${metaborgBaselineVersion}
   - org.metaborg:org.metaborg.meta.nabl2.lang:${metaborgBaselineVersion}
-  - org.metaborg:statix.lang:${metaborgBaselineVersion}
+  - org.metaborg:statix.lang:2.5.18.1
   - org.metaborg:sdf3.ext.statix:${metaborgBaselineVersion}
   source:
   - org.metaborg:meta.lib.spoofax:${metaborgVersion}

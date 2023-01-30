@@ -85,6 +85,6 @@ rules
     s -I-> s_import.
     //noDuplicateImportedConstraints(s, s_import),
     //noDuplicateImportedSorts(s, s_import),
-    //noDuplicateImportedCons(s, s_import),
+    //noDuplicateImportedCons(s, s_import).
     //noDuplicateImportedLabels(s, s_import),
     //noDuplicateImportedPatterns(s, s_import).

@@ -47,7 +47,7 @@ rules
     declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
     s_decl == scopeOfConstraint(s, id),
     declarePattern(s_mod, id, args, s_decl),
-    noDuplicatePatterns(s_mod, id, args, s_decl, a),
+    //noDuplicatePatterns(s_mod, id, args, s_decl, a),
     @a.type := PRED(TS).
 
   ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars s_decl}
@@ -60,7 +60,7 @@ rules
     declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
     s_decl == scopeOfConstraint(s, id),
     declarePattern(s_mod, id, args, s_decl),
-    noDuplicatePatterns(s_mod, id, args, s_decl, a),
+    //noDuplicatePatterns(s_mod, id, args, s_decl, a),
     @a.type := FUN(ATS, RT).
 
   ruleOk(s, CDecl2Rule(cd)) :-

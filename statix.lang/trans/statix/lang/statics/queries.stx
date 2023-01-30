@@ -13,12 +13,12 @@ rules
 
   queryOk: scope * CResolveQuery
 
-  queryOk(s, CResolveQuery(tgt, fltr, qmin, st, result, msg)) :- {T labels}
+  queryOk(s, CResolveQuery(tgt, fltr, qmin, Project(ptgt), st, result, msg)) :- {T labels}
     T == queryTargetToType(s, tgt),
     filterOk(s, fltr, inType(T)),
     minOk(s, qmin, inType(T)),
     SCOPE() == termOk(s, st),
-    LIST(TUPLE([PATH(), inOutType(T)])) == termOk(s, result),
+    projectOk(ptgt, inOutType(T)) == termOk(s, result),
     messageOk(s, msg),
     query label filter P*I? in s |-> labels,
     @tgt.lbls := labels.
@@ -30,6 +30,12 @@ rules
   queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(a@Label(l)))) = T :-
     RELATION(T) == typeOfLabel(s, l),
     @a.type := T.
+	
+  projectOk: ProjectTarget * TType -> TType
+  
+  projectOk(PFull(), T) = LIST(TUPLE([PATH(), T])).
+  projectOk(PTargetData(), T) = LIST(TUPLE([SCOPE(), T])).
+  projectOk(PData(), T) = LIST(T).
 
   filterOk: scope * QueryFilter * TType
 

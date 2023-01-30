@@ -38,8 +38,8 @@ signature
 rules
   // MODULES
   declareModule: scope * ModuleId * scope
-  resolveModuleScopes: scope * ModuleId -> list((path * (ModuleId * scope)))
-  resolveModuleNames: scope * scope -> list((path * (ModuleId * scope)))
+  resolveModuleScopes: scope * ModuleId -> list((ModuleId * scope))
+  resolveModuleNames: scope * scope -> list((ModuleId * scope))
   scopeOfModule: scope * ModuleId -> scope
   moduleOfScope: scope * scope -> ModuleId
 
@@ -50,23 +50,25 @@ rules
   resolveModuleScopes(s, id) = ps :-
     query mod
       filter P* and { (x, _) :- x == id }
+      project $
       in s |-> ps.
 
   resolveModuleNames(s, s_mod) = ps :-
     query mod
       filter P* and { (_, y) :- y == s_mod }
+      project $
       in s |-> ps.
 
   scopeOfModule(s, id) = s_mod :- {id'}
-    resolveModuleScopes(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]],
+    resolveModuleScopes(s, id) == [(id', s_mod)|_] | error $[Unresolved import module [id]],
     @id.ref := id'.
 
   moduleOfScope(s, s_mod) = id :-
-    resolveModuleNames(s, s_mod) == [(_,(id, _))|_].
+    resolveModuleNames(s, s_mod) == [(id, _)|_].
 
   // CONSTRAINTS
   declareConstraint: scope * ConstraintId * IType
-  resolveConstraint: scope * ConstraintId -> list((path * (ConstraintId * IType)))
+  resolveConstraint: scope * ConstraintId -> list((scope * (ConstraintId * IType)))
   typeOfConstraint: scope * ConstraintId -> IType
   scopeOfConstraint: scope * ConstraintId -> scope
   noDuplicateImportedConstraints: scope * scope
@@ -86,15 +88,16 @@ rules
     query predicate
         filter P*I* and { x :- x == id }
         min $ < I
+        project dst, $
         in s |-> ps.
 
-  typeOfConstraint(s, id) = T :- {id' p}
-    resolveConstraint(s, id) == [(p, (id', T))|_] | error $[Constraint [id] not defined],
+  typeOfConstraint(s, id) = T :- {id' s_c}
+    resolveConstraint(s, id) == [(s_c, (id', T))|_] | error $[Constraint [id] not defined],
     @id.ref := id',
-    @id.qname := moduleOfScope(s, startOfPathScope(p)).
+    @id.qname := moduleOfScope(s, s_c).
 
-  scopeOfConstraint(s, id) = startOfPathScope(p) :-
-    resolveConstraint(s, id) == [(p, _)|_].
+  scopeOfConstraint(s, id) = s_c :-
+    resolveConstraint(s, id) == [(s_c, _)|_].
 
   noDuplicateImportedConstraints(s, s_import) :- {ps}
     query predicate
@@ -122,7 +125,7 @@ rules
   // VARIABLES
   declareVariable: scope * Var
   declareVariables maps declareVariable(*, list(*))
-  resolveVariable: scope * VARID -> list((path * (VARID * TType)))
+  resolveVariable: scope * VARID -> list((scope * (VARID * TType)))
   typeOfVariable: scope * Var -> TType
   typeOfVariables maps typeOfVariable(*, list(*)) = *
 
@@ -143,18 +146,19 @@ rules
     query var
         filter P* and { x :- x == id }
         min $ < P
+        project dst, $
         in s |-> ps.
 
   typeOfVariable(s, Wld()) = T.
-  typeOfVariable(s, v@Var(id)) = T :- {p id'}
-    resolveVariable(s, id) == [(p,(id', T))|_] | error $[Variable [id] not defined],
+  typeOfVariable(s, v@Var(id)) = T :- {s_v id'}
+    resolveVariable(s, id) == [(s_v, (id', T))|_] | error $[Variable [id] not defined],
     @v.type := T,
     @id.ref := id',
-    @id.declScope := startOfPathScope(p).
+    @id.declScope := s_v.
 
   // SORTS
   declareSort: scope * SortId * TType
-  resolveSort: scope * SortId -> list((path * (SortId * TType)))
+  resolveSort: scope * SortId -> list((SortId * TType))
   typeOfSort: scope * SortId -> TType
   noDuplicateImportedSorts: scope * scope
 
@@ -166,38 +170,40 @@ rules
     query sort
         filter P*I* and { x :- x == id }
         min $ < I
+        project $
         in s |-> ps.
 
   typeOfSort(s, id) = T :- {id'}
-    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined],
+    resolveSort(s, id) == [(id', T)|_] | error $[Sort [id] not defined],
     @id.ref := id'.
 
   noDuplicateImportedSorts(s, s_import) :- {ps}
     query sort
         filter I*
         min $ < I
+		project $
         in s_import |-> ps,
     areUniqueImportedSorts(s, ps).
 
-  isUniqueImportedSort: scope * (path * (SortId * TType))
+  isUniqueImportedSort: scope * (SortId * TType)
   areUniqueImportedSorts maps isUniqueImportedSort(*, list(*))
 
-  isUniqueImportedSort(s, (_, (id, _))) :- {p ps}
+  isUniqueImportedSort(s, (id, _)) :- {s_d ps}
     query sort
         filter I+ and { x :- x == id }
-        in s |-> [(p, _)|ps],
-        uniqueSortDecls(ps, startOfPathScope(p)) | error $[Duplicate imported sort [id]].
+		project dst, $
+        in s |-> [(s_d, _)|ps],
+        uniqueSortDecls(ps, s_d) | error $[Duplicate imported sort [id]].
 
-  uniqueSortDecls: list((path * (SortId * TType))) * scope
+  uniqueSortDecls: list((scope * (SortId * TType))) * scope
 
   uniqueSortDecls([], _).
-  uniqueSortDecls([(p, _)|ps], s) :-
-    startOfPathScope(p) == s,
+  uniqueSortDecls([(s, _)|ps], s) :-
     uniqueSortDecls(ps, s).
 
   // CONSTRUCTORS
   declareCons: scope * OpId * int * (list(TType) * TType)
-  resolveCons: scope * OpId * int -> list((path * (OpId * int * (list(TType) * TType))))
+  resolveCons: scope * OpId * int -> list((OpId * int * (list(TType) * TType)))
   typeOfCons: scope * OpId * int -> (list(TType) * TType)
   noDuplicateImportedCons: scope * scope
 
@@ -209,38 +215,40 @@ rules
     query cons
         filter P*I* and { (x, y) :- x == id, y == arity }
         min $ < I
+		project $
         in s |-> ps.
 
   typeOfCons(s, id, arity) = T :- {id' arity'}
-    resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined],
+    resolveCons(s, id, arity) == [(id', arity', T)|_] | error $[Constructor [id]/[arity] not defined],
     @id.ref := id'.
 
   noDuplicateImportedCons(s, s_import) :- {ps}
     query cons
         filter I*
         min $ < I
+		project $
         in s_import |-> ps,
     areUniqueImportedCons(s, ps).
 
-  isUniqueImportedCons: scope * (path * (OpId * int * (list(TType) * TType)))
+  isUniqueImportedCons: scope * (OpId * int * (list(TType) * TType))
   areUniqueImportedCons maps isUniqueImportedCons(*, list(*))
 
-  isUniqueImportedCons(s, (_, (id, arity, _))) :- {p ps}
+  isUniqueImportedCons(s, (id, arity, _)) :- {s_d ps}
     query cons
         filter I+ and { (x, y) :- x == id, y == arity }
-        in s |-> [(p, _)|ps],
-        uniqueConsDecls(ps, startOfPathScope(p)) | error $[Duplicate imported constructor [id]/[arity]].
+		project dst, $
+        in s |-> [(s_d, _)|ps],
+        uniqueConsDecls(ps, s_d) | error $[Duplicate imported constructor [id]/[arity]].
 
-  uniqueConsDecls: list((path * (OpId * int * (list(TType) * TType)))) * scope
+  uniqueConsDecls: list((scope * (OpId * int * (list(TType) * TType)))) * scope
 
   uniqueConsDecls([], _).
-  uniqueConsDecls([(p, _)|ps], s) :-
-    startOfPathScope(p) == s,
+  uniqueConsDecls([(s, _)|ps], s) :-
     uniqueConsDecls(ps, s).
 
   // RELATIONS OR LABELS
   declareLabel: scope * RelationId * LType
-  resolveLabel: scope * RelationId -> list((path * (RelationId * LType)))
+  resolveLabel: scope * RelationId -> list((scope * (RelationId * LType)))
   typeOfLabel: scope * RelationId -> LType
   noDuplicateImportedLabels: scope * scope
 
@@ -258,12 +266,13 @@ rules
     query label
         filter P*I? and { x :- x == id }
         min $ < I
+        project dst, $
         in s |-> ps.
 
-  typeOfLabel(s, id) = T :- {id' p}
-    resolveLabel(s, id) == [(p, (id', T))|_] | error $[Label [id] not defined],
+  typeOfLabel(s, id) = T :- {id' s_l}
+    resolveLabel(s, id) == [(s_l, (id', T))|_] | error $[Label [id] not defined],
     @id.ref := id',
-    @id.qname := moduleOfScope(s, startOfPathScope(p)).
+    @id.qname := moduleOfScope(s, s_l).
 
   noDuplicateImportedLabels(s, s_import) :- {ps}
     query label
@@ -289,7 +298,7 @@ rules
 
   // KIND OF CONSTRAINTS
   setCKind: scope * ConstraintId * CKind
-  resolveCKind: scope * ConstraintId -> list((path * (ConstraintId * CKind)))
+  resolveCKind: scope * ConstraintId -> list((ConstraintId * CKind))
   getCKind: scope * ConstraintId -> CKind
 
   setCKind(s, id, kind) :-
@@ -298,10 +307,11 @@ rules
   resolveCKind(s, id) = ps :-
     query cKind
         filter I* and { x :- x == id }
+        project $
         in s |-> ps.
 
   getCKind(s, id) = kind :-
-    resolveCKind(s, id) == [(_, (_, kind))|_].
+    resolveCKind(s, id) == [(_, kind)|_].
 
   // RULE PATTERNS
   declarePattern: scope * ConstraintId * list(Term) * scope
