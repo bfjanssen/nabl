@@ -75,20 +75,21 @@ public class Solver {
             try {
                 Thread.sleep(30_000);
                 while(true) {
-                    final IConstraint cur = Optional.ofNullable(solver.currentConstraint.get()).map(c -> c.cause().orElse(null)).orElse(null);
+                    final IConstraint cur = solver.currentConstraint.get();
                     if(cur != null) {
                         final StringBuilder sb = new StringBuilder("Current constraint:");
                         final TermFormatter formatter = Solver.shallowTermFormatter(unifier, Solver.ERROR_TRACE_TERM_DEPTH);
-                        MessageUtil.formatTrace(cur, unifier, formatter, -1).forEach(traceElement -> {
+                        MessageUtil.formatTrace(cur, unifier, formatter, 3).forEach(traceElement -> {
                             sb.append("\n\t- ");
                             sb.append(traceElement);
                         });
                         System.err.println(sb.toString());
                     }
-                    for(StackTraceElement ste : solverThread.getStackTrace()) {
-                        System.err.println(ste);
+                    StackTraceElement[] trace = solverThread.getStackTrace();
+                    for(int i = 0; i < 2 && i < trace.length; i++) {
+                        System.err.println(trace[i]);
                     }
-                    Thread.sleep(5_000);
+                    Thread.sleep(2_000);
                 }
             } catch(InterruptedException e) {
                 return;
