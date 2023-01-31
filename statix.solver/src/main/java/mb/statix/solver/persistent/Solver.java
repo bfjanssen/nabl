@@ -28,6 +28,9 @@ import mb.p_raffrayi.ITypeCheckerContext;
 import mb.scopegraph.oopsla20.INameResolution;
 import mb.scopegraph.oopsla20.reference.FastNameResolution;
 import mb.statix.concurrent.StatixSolver;
+import mb.statix.constraints.CConj;
+import mb.statix.constraints.CExists;
+import mb.statix.constraints.CTry;
 import mb.statix.constraints.Constraints;
 import mb.statix.constraints.messages.IMessage;
 import mb.statix.constraints.messages.MessageUtil;
@@ -72,11 +75,11 @@ public class Solver {
             try {
                 Thread.sleep(30_000);
                 while(true) {
-                    final IConstraint c = solver.currentConstraint.get();
-                    if(c != null) {
+                    final IConstraint cur = Optional.ofNullable(solver.currentConstraint.get()).map(c -> c.cause().orElse(null)).orElse(null);
+                    if(cur != null) {
                         final StringBuilder sb = new StringBuilder("Current constraint:");
                         final TermFormatter formatter = Solver.shallowTermFormatter(unifier, Solver.ERROR_TRACE_TERM_DEPTH);
-                        MessageUtil.formatTrace(constraint, unifier, formatter, -1).forEach(traceElement -> {
+                        MessageUtil.formatTrace(cur, unifier, formatter, -1).forEach(traceElement -> {
                             sb.append("\n\t- ");
                             sb.append(traceElement);
                         });
