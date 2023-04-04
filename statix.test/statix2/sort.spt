@@ -1,0 +1,85 @@
+module statix2/sort
+
+language Statix2Lang
+
+
+fixture [[
+module test
+
+signature
+ sorts
+    INT = int
+    STR = string
+    ArithExp
+    StrExp
+
+ constructors
+    Plus : INT * INT -> ArithExp
+    Concat : STR * STR -> StrExp
+
+[[...]]
+]]
+
+//Duplicates
+
+test duplicate sorts [[
+  signature
+    sorts Test Test
+]] analysis fails
+
+test same constructor different arity [[
+  signature
+    constructors
+        Minus : INT -> ArithExp
+        Minus : INT * INT -> ArithExp
+]] analysis succeeds
+
+test same constructor same arity [[
+  signature
+    constructors
+        Minus : INT -> ArithExp
+        Minus : STR -> StrExp
+]] analysis fails
+
+// Matching
+
+test correct constructor to sort match [[
+  rules
+    plus: ArithExp -> int
+    plus(Plus(4, 4)) = 8.
+]] analysis succeeds
+
+test wrong constructor to sort match [[
+  rules
+    plus: ArithExp -> int
+    plus(Concat("4", "4")) = 8.
+]] analysis fails
+
+// FLAKY MESSAGE LOCATION, HAVE TO LOOK INTO THIS
+//test wrong type inside constructor [[
+//  rules
+//    plus: ArithExp -> int
+//    plus(Plus(4, "4")) = 8.
+//]] analysis fails
+
+test can't construct to a sort alias [[
+  signature
+    constructors
+        Number: INT
+]] analysis fails
+
+test can't construct to a sort alias functional [[
+  signature
+    constructors
+        STR2INT: STR -> INT
+]] analysis fails
+
+test transitive aliasing succeeds [[
+  signature
+    sorts
+        STR2 = STR
+
+  rules
+  strRule: STR2
+  strRule("hi").
+]] analysis succeeds

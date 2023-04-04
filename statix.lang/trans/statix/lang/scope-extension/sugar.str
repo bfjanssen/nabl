@@ -54,4 +54,3 @@ rules // collect extension constraints
   ext-get-term-ref: COp(x, args) -> ExtParam(r-ref, i)
     where r-ref := <ext-get-constraint-ref> x
         ; i := <length;inc> args
-

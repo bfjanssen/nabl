@@ -1,4 +1,4 @@
-module statix/lang/statics/rule-order
+module statix/lang/statics/legacy/rule-order
 
 imports
 

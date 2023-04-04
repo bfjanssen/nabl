@@ -1,10 +1,10 @@
-module statix/lang/statics/sugar
+module statix/lang/statics/legacy/sugar
 
 imports
 
   signatures/statix/lang/-
 
-  statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
 rules
 

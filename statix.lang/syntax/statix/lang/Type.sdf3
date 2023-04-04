@@ -2,7 +2,7 @@ module statix/lang/Type
 
 imports
 
-  nabl2/API
+//  nabl2/API
 
   statix/lang/Common
   statix/lang/Core
@@ -13,17 +13,22 @@ sorts
 
   IType // internal type
   TType // term type
+  TTypes
+
+  // STUB FIXES
+  NaBL2Occurrence
 
 context-free syntax
 
-  IType.PRED = [[TTypes]]
-  IType.FUN  = [[TTypes] -> [TType]]
   IType.NS   = [[TTypes]]
   IType.OP   = [[TTypes] -> [TType]]
 
   TTypes = {TType " * "}*
 
-  TType.SORT       = <<NaBL2Occurrence>>
+  IType.PRED = [[TType*]]
+  IType.FUN  = [[TType*] -> [TType]]
+
+  TType.SORT       = <<SortId>>
   TType.INT        = <int>
   TType.STRING     = <string>
   TType.PATH       = <path>
@@ -32,11 +37,22 @@ context-free syntax
   TType.AST_ID     = <astId>
   TType.SCOPE      = <scope>
   TType.LIST       = <list(<TType>)>
-  TType.TUPLE      = <(<TTypes>)>
+  TType.TUPLE      = <(<{TType " * "}*>)>
 
 sorts
 
   ExtOrigin // custom prettyprint rule in statix/lang/scope-extension.str
+
+lexical sorts
+
+  Scope-String
+
+lexical syntax
+
+  Scope-String = []
+
+context-free sorts
+  ExtConstraints ExtConstraint ExtSets ExtSet ExtId ExtLabel ExtEqs ExtEq ExtOp ExtDecl ExtRef
 
 context-free syntax
 
@@ -58,9 +74,17 @@ context-free syntax
   ExtSet.ExtNone  = "0"
 
 
-  ExtId.ExtRef  = <ref <NaBL2Occurrence>>
-  ExtId.ExtDecl = <decl <NaBL2Occurrence>>
+  ExtId.ExtDecl = <decl <ExtDecl>>
+  ExtId.ExtRef  = <ref <ExtRef>>
 
+  ExtDecl.BasicDecl = <<VARID>>
+  ExtDecl.ScopedDecl = <<VARID> <Scope-String>>
+
+  ExtRef.VarRef = <<VARID>>
+  ExtRef.ConstraintRef = <<ConstraintId>>
+
+  ExtId.LegDecl = <decl <NaBL2Occurrence>>
+  ExtId.LegRef = <ref <NaBL2Occurrence>>
 
   ExtLabel = RelRef
   ExtLabel = EdgeRef
@@ -74,6 +98,9 @@ context-free syntax
   ExtOp.Union        = [union([{ExtOp ", "}*])]
   ExtOp.Intersection = [isect([{ExtOp ", "}*])]
   ExtOp              = ExtSet
+
+context-free sorts
+  PatternConstraint
 
 context-free syntax
 

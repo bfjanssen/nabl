@@ -3,8 +3,12 @@ module statix/lang/precompile
 imports
 
   statix/lang/precompile/-
+  statix/lang/precompile/legacy/-
 
 rules
 
   precompile(|a) =
     precompile-queries(|a)
+
+  precompile-legacy(|a) =
+    precompile-queries-legacy(|a)

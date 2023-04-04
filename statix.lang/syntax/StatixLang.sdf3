@@ -17,6 +17,9 @@ template options
 
   keyword -/- [a-zA-Z0-9\_\-\']
 
+context-free sorts
+  Start
+
 context-free start-symbols
 
   Start

@@ -1,0 +1,354 @@
+module statix2/relation
+
+language Statix2Lang
+
+fixture [[
+module test
+
+signature
+  relations
+     var: string * int
+     simple: string
+     varF: string -> int
+
+  name-resolution
+    labels Q P R
+
+rules
+  rule: scope
+
+[[...]]
+]]
+
+// Duplicates
+
+test duplicate relation name [[
+  signature
+    relations
+       rel: string
+       rel: int
+]] analysis fails
+
+test duplicate edge labels [[
+  signature
+    name-resolution
+      labels B B
+]] analysis fails
+
+test duplicate edge label and relation name [[
+  signature
+    relations
+      rel: string
+    name-resolution
+      labels rel
+]] analysis fails
+
+// Declarations
+
+test correct declaration [[
+  rules
+    rule(s) :- !var["x", 8] in s.
+]] analysis succeeds
+
+test unknown relation name declaration fails [[
+  rules
+    rule(s) :- !unknown["x", 8] in s.
+]] analysis fails
+
+test edge label name fails as declaration [[
+  rules
+    rule(s) :- !P["x"] in s.
+]] analysis fails
+
+test incorrect number of declaration terms fails [[
+  rules
+    rule(s) :- !var["x", 8, 9] in s.
+]] analysis fails
+
+test incorrect types of declaration fails [[
+  rules
+    rule(s) :- !var["x", "8"] in s.
+]] analysis fails
+
+test declaration in non scope term fails [[
+  rules
+    rule(s) :- !var["x", 8] in 0.
+]] analysis fails
+
+test functional relation succesful declaration [[
+  rules
+    rule(s) :- !varF["x", 8] in s.
+]] analysis succeeds
+
+test incorrect types of functional relation declaration fails [[
+  rules
+    rule(s) :- !varF["x", "8"] in s.
+]] analysis fails
+
+// Queries
+
+test correct simple query [[
+  rules
+    rule(s) :-
+      query var
+      in s |-> _.
+]] analysis succeeds
+
+test unknown relation name query fails [[
+  rules
+    rule(s) :-
+      query unknown
+      in s |-> _.
+]] analysis fails
+
+test edge label name query fails [[
+  rules
+    rule(s) :-
+      query P
+      in s |-> _.
+]] analysis fails
+
+test query in non scope term fails [[
+  rules
+    rule(s) :-
+      query var
+      in 0 |-> _.
+]] analysis fails
+
+test result term has correct type binary relation [[
+  rules
+    rule(s) :-
+      query var
+      in s |-> [(_, ("x", 8))] : list((path * (string * int))).
+]] analysis succeeds
+
+test result term has correct type unary relation [[
+  rules
+    rule(s) :-
+      query simple
+      in s |-> [(_, "x")] : list((path * string)).
+]] analysis succeeds
+
+test result term has correct type functional relation [[
+  rules
+    rule(s) :-
+      query varF
+      in s |-> [(_, ("x", 8))] : list((path * (string * int))).
+]] analysis succeeds
+
+test result term has incorrect type [[
+  rules
+    rule(s) :-
+      query var
+      in s |-> [(_, ("x", "8"))].
+]] analysis fails
+
+test end of path target gives correct result pattern [[
+  rules
+    rule(s) :- {ps}
+      query ()
+      in s |-> ps : list((path * scope)).
+]] analysis succeeds
+
+test query failing message [[
+  rules
+    rule(s) :-
+      query var
+      in s |-> _ | error $["Variable [x] doesn't exist"].
+]] analysis fails
+
+// Query Filter
+
+test correct filter expression [[
+  rules
+    rule(s) :-
+      query var
+      filter P* & ~Q | (e R) | 0
+      in s |-> _.
+]] analysis succeeds
+
+test unknown label in filter expression fails [[
+  rules
+    rule(s) :-
+      query var
+      filter P* & ~Q | (e A) | 0
+      in s |-> _.
+]] analysis fails
+
+test relation name in filter expression fails[[
+  rules
+    rule(s) :-
+      query var
+      filter P* & ~simple | (e R) | 0
+      in s |-> _.
+]] analysis fails
+
+test correct filter higher order constraint typing [[
+  rules
+    rule(s) :-
+      query var
+      filter P* and {(x, y) :- x == "hi", y == 0 }
+      in s |-> _.
+]] analysis succeeds
+
+test incorrect filter higher order constraint typing functional relation [[
+  rules
+    rule(s) :-
+      query varF
+      filter P* and {(x, y) :- x == "hi", y == 0 }
+      in s |-> _.
+]] analysis fails
+
+test correct filter higher order constraint typing functional relation [[
+  rules
+    rule(s) :-
+      query varF
+      filter P* and {x :- x == "hi" }
+      in s |-> _.
+]] analysis succeeds
+
+test correct filter end of path query [[
+  rules
+    rule(s) :-
+      query ()
+      filter P* and {x : scope :- true }
+      in s |-> _.
+]] analysis succeeds
+
+test filter higher order constraint using correctly typed rule [[
+  rules
+    rule(s) :-
+      query var
+      filter P* and filt
+      in s |-> _.
+
+    filt: (string * int)
+]] analysis succeeds
+
+test filter higher order constraint using incorrectly typed rule [[
+  rules
+    rule(s) :-
+      query var
+      filter P* and filt
+      in s |-> _.
+
+    filt: (int * string)
+]] analysis fails
+
+test correct filter higher order constraint term equality typing [[
+  rules
+    rule(s) :-
+      query var
+      filter P* and eq(("hi", 8))
+      in s |-> _.
+]] analysis succeeds
+
+test incorrect filter higher order constraint term equality typing [[
+  rules
+    rule(s) :-
+      query var
+      filter P* and eq((8, "hi"))
+      in s |-> _.
+]] analysis fails
+
+// Query Min
+
+test correct label order [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P, P < R
+      in s |-> _.
+]] analysis succeeds
+
+test non existent label in order fails [[
+  rules
+    rule(s) :-
+      query var
+      min $ < A
+      in s |-> _.
+]] analysis fails
+
+test relation name in order fails [[
+  rules
+    rule(s) :-
+      query var
+      min $ < simple
+      in s |-> _.
+]] analysis fails
+
+test correct min higher order constraint [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and {x, y :- x == y}
+      in s |-> _.
+]] analysis succeeds
+
+test incorrect number of inputs min higher order constraint [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and {x :- x == _}
+      in s |-> _.
+]] analysis fails
+
+test correct typing min higher order constraint [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and {(x1, x2), (y1, y2) :- x1 == "hi", x2 == 0, y1 == "hello", y2 == 0 }
+      in s |-> _.
+]] analysis succeeds
+
+test incorrect typing min higher order constraint functional relation [[
+  rules
+    rule(s) :-
+      query varF
+      min $ < P and {(x1, x2), (y1, y2) :- x1 == "hi", x2 == 0, y1 == "hello", y2 == 0 }
+      in s |-> _.
+]] analysis fails
+
+test correct typing min higher order constraint functional relation [[
+  rules
+    rule(s) :-
+      query varF
+      min $ < P and { x, y :- x == "hi", y == "hello" }
+      in s |-> _.
+]] analysis succeeds
+
+test correct typing min higher order constraint end of path query [[
+  rules
+    rule(s) :-
+      query ()
+      min $ < P and {x : scope, y : scope :- true }
+      in s |-> _.
+]] analysis succeeds
+
+test correct min higher order constraint using defined rule [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and order
+      in s |-> _.
+
+    order: (string * int) * (string * int)
+]] analysis succeeds
+
+test incorrect min higher order constraint using defined rule [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and order
+      in s |-> _.
+
+    order: (string * int)
+]] analysis fails
+
+test can't use term equality constraint in label order [[
+  rules
+    rule(s) :-
+      query var
+      min $ < P and eq(_)
+      in s |-> _.
+]] analysis fails

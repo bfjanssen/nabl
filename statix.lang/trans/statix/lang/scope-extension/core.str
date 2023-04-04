@@ -40,7 +40,6 @@ rules // collect extension constraints
   ext-constraints: l@LLam(ps, body) -> c*
     where c* := <all-vars;map(\ Var(y) -> ExtIsCovered(ExtVar(<ext-get-var-decl> y), l) \)> ps
 
-
   ext-constraints: c@CTry(_, _) -> []
 
   ext-constraints: c@CExists(vs, _) -> c*

@@ -6,7 +6,9 @@ dependencies:
   compile:
   - org.metaborg:org.metaborg.meta.lang.esv:${metaborgBaselineVersion}
   - org.metaborg:org.metaborg.meta.lang.template:${metaborgBaselineVersion}
-  - org.metaborg:org.metaborg.meta.nabl2.lang:${metaborgVersion}
+  - org.metaborg:org.metaborg.meta.nabl2.lang:${metaborgBaselineVersion}
+  - org.metaborg:statix.lang:${metaborgBaselineVersion}
+  - org.metaborg:sdf3.ext.statix:${metaborgBaselineVersion}
   source:
   - org.metaborg:meta.lib.spoofax:${metaborgVersion}
   - org.metaborg:org.metaborg.meta.nabl2.shared:${metaborgVersion}
@@ -52,6 +54,9 @@ exports:
   directory: trans/
   includes:
   - "statix/lang/**/*.nabl2"
+- language: StatixLang
+  directory: src-gen/statix
+  includes: "**/*.aterm"
 language:
   sdf:
     sdf2table: java

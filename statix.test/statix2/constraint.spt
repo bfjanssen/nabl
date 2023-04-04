@@ -1,0 +1,172 @@
+module statix2/constraint
+
+language Statix2Lang
+
+test true constraint [[
+  resolve true
+]] analysis succeeds
+
+test false constraint [[
+  resolve false
+]] analysis succeeds
+
+test false constraint failing message [[
+  resolve false | error $["Variable [x] doesn't exist"]
+]] analysis fails
+
+test constraint conjuction [[
+  resolve true, false
+]] analysis succeeds
+
+test succesful equality [[
+  resolve 8 == 8
+]] analysis succeeds
+
+test failing equality typing [[
+  resolve 8 == "8"
+]] analysis fails
+
+test equality constraint failing message [[
+  resolve 8 == 8 | error $["Variable [x] doesn't exist"]
+]] analysis fails
+
+test succesful inequality [[
+  resolve 8 != 7
+]] analysis succeeds
+
+test failing inequality typing [[
+  resolve 8 != "7"
+]] analysis fails
+
+test inequality constraint failing message [[
+  resolve 8 != 7 | error $["Variable [x] doesn't exist"]
+]] analysis fails
+
+test correct scope creation [[
+  resolve {s1 s2} new s1 s2
+]] analysis succeeds
+
+test scope creation variable has to have type scope [[
+  resolve {s1 s2} new s1 s2, _ == s2 : int
+]] analysis fails
+
+test correct scope extension [[
+  resolve {s1 s2} new s1 s2, s1 -P-> s2
+
+  signature
+    name-resolution
+      labels P
+]] analysis succeeds
+
+test left argument scope extension has to be of type scope [[
+  resolve {s} new s, 8 -P-> s
+
+  signature
+    name-resolution
+      labels P
+]] analysis fails
+
+test right argument scope extension has to be of type scope [[
+  resolve {s} new s, s -P-> 8
+
+  signature
+    name-resolution
+      labels P
+]] analysis fails
+
+test unknown label scope extension [[
+  resolve {s1 s2} new s1 s2, s1 -P-> s2
+]] analysis fails
+
+test can't extend using relation name [[
+  resolve {s1 s2} new s1 s2, s1 -var-> s2
+
+  signature
+    relations
+      var: int
+]] analysis fails
+
+test correct inline constraint [[
+  resolve rule(8)
+
+  rules
+    rule: int
+]] analysis succeeds
+
+test inline constraint failing message [[
+  resolve rule(8) | error $["Variable [x] doesn't exist"]
+
+  rules
+    rule: int
+]] analysis fails
+
+test can't use functional constraints as inline constraint [[
+  resolve rule(8)
+
+  rules
+    rule: int -> int
+]] analysis fails
+
+test no duplicate variables in existential constraint [[
+  resolve {x x} true
+]] analysis fails
+
+test try constraint with warning message [[
+  resolve try { true } | warning "WARNING"
+]] analysis succeeds
+
+test non try constraint with warning message is not allowed [[
+  resolve false | warning "WARNING"
+]] analysis fails
+
+test try constraint with note message [[
+  resolve try { true } | note "NOTE"
+]] analysis succeeds
+
+test non try constraint with warning message is not allowed [[
+  resolve false | note "NOTE"
+]] analysis fails
+
+test correct astId constraint [[
+  resolve astId(_, _ : astId)
+]] analysis succeeds
+
+test second argument astId constraint should be of type astId [[
+  resolve astId(_, 8)
+]] analysis fails
+
+test correct ast property constraint [[
+  resolve {x} @x.type := _
+]] analysis succeeds
+
+test unknown variable ast property constraint [[
+  resolve @x.type := _
+]] analysis fails
+
+test correct arithmetic constraint [[
+  resolve 8 #< 9
+]] analysis succeeds
+
+test incorrect type arithmetic constraint [[
+  resolve {x} x == "9", 8 #< x
+]] analysis fails
+
+test undefined variable arithmetic constraint [[
+  resolve x #< 9
+]] analysis fails
+
+test arithmetic constraint faling message [[
+  resolve 8 #< 9 | error $["Variable [x] doesn't exist"]
+]] analysis fails
+
+test correct message including variable [[
+  resolve {x} false | error $["Variable [x] does exist"]
+]] analysis succeeds
+
+test correct message with origin [[
+  resolve {x} false | error "ERROR" @x
+]] analysis succeeds
+
+test message origin variable is not defined [[
+  resolve false | error "ERROR" @x
+]] analysis fails

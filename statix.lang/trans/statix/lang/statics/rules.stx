@@ -1,0 +1,235 @@
+module statix/lang/statics/rules
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Sugar-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/types
+  statix/lang/statics/constraints
+  statix/lang/statics/relations
+  statix/lang/statics/duplicate-patterns
+
+rules
+  cDeclOk: scope * CDecl
+  cDeclsOk maps cDeclOk(*, list(*))
+
+  cDeclOk(s, CDecl(_, id, a@SimpleType(tys))) :- {TS}
+    TS == sortRefsToTypes(s, tys),
+    declareConstraint(s, id, PRED(TS)),
+    setCKind(s, id, DeclaredC()),
+    @a.type := PRED(TS).
+
+  cDeclOk(s, CDecl(_, id, a@FunType(tys, rtty))) :- {TS RT}
+    TS == sortRefsToTypes(s, tys),
+    RT == sortRefToType(s, rtty),
+    declareConstraint(s, id, FUN(TS, RT)),
+    setCKind(s, id, DeclaredC()),
+    @a.type := FUN(TS, RT).
+
+rules
+  ruleOk: scope * Rule
+  rulesOk maps ruleOk(*, list(*))
+
+  ruleOk(s, Rule(_, head, cnstrnt)) :- {s_rule}
+    new s_rule, s_rule -P-> s,
+    declareBarrier(s_rule),
+    ruleHeadOk(s_rule, head, s),
+    constraintOk(s_rule, cnstrnt).
+
+  ruleHeadOk: scope * RuleHead * scope
+
+  ruleHeadOk(s, a@C(id, args), s_mod) :- {TS vars s_decl}
+    PRED(TS) == typeOfConstraint(s, id),
+    DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
+    vars == removeDuplicateVars(patternsOk(s, args, TS)),
+    declareVariables(s, vars),
+    declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
+    s_decl == scopeOfConstraint(s, id),
+    declarePattern(s_mod, id, args, s_decl),
+    noDuplicatePatterns(s_mod, id, args, s_decl, a),
+    @a.type := PRED(TS).
+
+  ruleHeadOk(s, a@F(id, args, result), s_mod) :- {ATS RT vs1 vs2 vars s_decl}
+    FUN(ATS, RT) == typeOfConstraint(s, id),
+    DeclaredC() == getCKind(s_mod, id) | error "Rules can only be defined for declared constraints.",
+    vs1 == patternsOk(s, args, ATS),
+    vs2 == patternOk(s, result, RT),
+    vars == removeDuplicateVars(concatVarList(vs1, vs2)),
+    declareVariables(s, vars),
+    declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
+    s_decl == scopeOfConstraint(s, id),
+    declarePattern(s_mod, id, args, s_decl),
+    noDuplicatePatterns(s_mod, id, args, s_decl, a),
+    @a.type := FUN(ATS, RT).
+
+  ruleOk(s, CDecl2Rule(cd)) :-
+    cDeclOk(s, cd).
+
+  ruleOk(s, RelDecl2Rule(rd)) :-
+    relDeclOk(s, rd).
+
+  //Checking patterns and extracting new variables
+  patternOk: scope * Term * TType -> list(Var)
+
+  patternOk(_, Int2Term(a@Int(_)), INT()) = [] :-
+    @a.type := INT().
+  patternOk(_, Str2Term(a@Str(_)), STRING()) = [] :-
+    @a.type := STRING().
+
+  patternOk(_, Var2Term(a@Wld()), T) = [] :-
+    @a.type := T.
+  patternOk(s, Var2Term(v@Var(_)), T) = [v] :-
+    T == typeOfVariable(s, v).
+
+  patternOk(s, a@Tuple(ts), T) = vars :- {TS}
+    T == TUPLE(TS),
+    vars == patternsOk(s, ts, TS),
+    @a.type := T.
+
+  patternOk(s, a@List(xs), T) = vars :- {LT}
+    T == LIST(LT),
+    vars == listPatternOk(s, xs, LT),
+    @a.type := T.
+
+  patternOk(s, a@ListTail(xs, tail), T) = concatVarList(vs1, vs2) :- {LT}
+    T == LIST(LT),
+    vs1 == listPatternOk(s, xs, LT),
+    vs2 == patternOk(s, tail, T),
+    @a.type := T.
+
+  patternOk(s, a@Op(id, Terms2CommaTerms(ts)), T) = vars :- {TS sid len}
+    len == termListLength(ts),
+    (TS, T) == typeOfCons(s, id, len),
+    vars == patternsOk(s, ts, TS),
+    @a.type := T.
+
+  patternOk(s, a@COp(cid, Terms2CommaTerms(ts)), T) = vars :- {RT ATS}
+    FUN(ATS, RT) == typeOfConstraint(s, cid) | error "Inline notation can only be used for functional constraints",
+    RT == T | error $[Return type [RT] doesn't match expected type [T]],
+    vars == patternsOk(s, ts, ATS),
+    @a.type := T.
+
+  patternOk(s, a@As(v@Wld(), term), T) = patternOk(s, term, T) :-
+    try { false } | warning "Are you sure you want to ascribe to a wildcard?",
+    @a.type := T,
+    @v.type := T.
+  patternOk(s, a@As(v@Var(_), term), T) = [v|vars] :-
+    T == typeOfVariable(s, v),
+    vars == patternOk(s, term, T),
+    @a.type := T.
+
+  patternOk(s, a@Ascribe(term, ty), T) = patternOk(s, term, T) :-
+    T == sortRefToType(s, ty),
+    @a.type := T.
+
+  patternOk(s, a@NewOp(), SCOPE()) = [] :-
+    @a.type := SCOPE().
+
+  patternOk(s, a@AstIdOp(t), AST_ID()) = patternOk(s, t, _) :-
+    @a.type := AST_ID().
+
+  patternOk(s, Path2Term(PathLit2Path(a@PathEmpty(st))), PATH()) = vars :-
+    vars == patternOk(s, st, SCOPE()),
+    @a.type := PATH().
+
+  patternOk(s, Path2Term(PathLit2Path(a@PathStep(pt, lt, st))), PATH()) = vars :- {vs1 vs2 vs3}
+    vs1 == patternOk(s, pt, PATH()),
+    vs2 == patternOk(s, lt, LABEL()),
+    vs3 == patternOk(s, st, SCOPE()),
+    vars == concatVarList(vs1, concatVarList(vs2, vs3)),
+    @a.type := PATH().
+
+  patternOk(s, a@ArithOp(aExp), T) = arithPatternOk(s, aExp) :-
+    T == INT(),
+    @a.type := T.
+
+  arithPatternOk: scope * ArithExp -> list(Var)
+
+  arithPatternOk(_, Int2ArithExp(_)) = [].
+  arithPatternOk(_, Var2ArithExp(Wld())) = [].
+  arithPatternOk(s, Var2ArithExp(v@Var(_))) = [v] :-
+    INT() == typeOfVariable(s, v).
+
+  arithPatternOk(s, AAdd(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, ASub(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, AMul(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, AMin(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, AMax(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, ADiv(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  arithPatternOk(s, AMod(e1, e2)) = concatVarList(vs1, vs2) :-
+    vs1 == arithPatternOk(s, e1),
+    vs2 == arithPatternOk(s, e2).
+
+  patternsOk: scope * list(Term) * list(TType) -> list(Var)
+
+  patternsOk(_, [], []) = [].
+  patternsOk(s, [x|xs], [T|TS]) = concatVarList(vs1, vs2) :-
+    vs1 == patternOk(s, x, T),
+    vs2 == patternsOk(s, xs, TS).
+
+  listPatternOk: scope * list(Term) * TType -> list(Var)
+
+  listPatternOk(_, [], _) = [].
+  listPatternOk(s, [x|xs], T) = concatVarList(vs1, vs2) :-
+    vs1 == patternOk(s, x, T),
+    vs2 == listPatternOk(s, xs, T).
+
+rules
+  cDeclOk(s, CDerive2CDecl(cd)) :-
+    cDeriveOk(s, cd).
+
+  cDeriveOk: scope * CDerive
+
+  cDeriveOk(s, CDeriveMap(id, mid, lifts)) :- {TS LTS num}
+    PRED(TS) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) = ... for functional constraints.],
+    (LTS, num) == liftsToTypes(lifts, TS),
+    num #> 0 | error "At least one argument must be lifted.",
+    declareConstraint(s, id, PRED(LTS)),
+    @id.ref := id,
+    setCKind(s, id, DerivedC()),
+    @id.type := PRED(LTS),
+    @mid.type := PRED(TS).
+
+  cDeriveOk(s, FDeriveMap(id, mid, lifts, outLift)) :- {TS RT LTS LRT num}
+    FUN(TS, RT) == typeOfConstraint(s, mid) | error $[Use [id] maps [mid](...) for non-functional constraints.],
+    (LTS, num) == liftsToTypes(lifts, TS),
+    num #> 0 | error "At least one argument must be lifted.",
+    (LRT, _) == liftToType(outLift, RT),
+    declareConstraint(s, id, FUN(LTS, LRT)),
+    @id.ref := id,
+    setCKind(s, id, DerivedC()),
+    @id.type := FUN(LTS, LRT),
+    @mid.type := FUN(TS, RT).
+
+  liftToType: Lift * TType -> (TType * int)
+
+  liftToType(IdLift(), T) = (T, 0).
+  liftToType(ListLift(), T) = (LIST(T), 1).
+  liftToType(TupleLift(ls), TUPLE(TS)) = (TUPLE(LTS), num) :-
+    (LTS, num) == liftsToTypes(ls, TS).
+
+  liftsToTypes: list(Lift) * list(TType) -> (list(TType) * int)
+
+  liftsToTypes([], []) = ([], 0).
+  liftsToTypes([l|ls], [T|TS]) = ([LT|LTS], #(num1 + num2)) :-
+    (LT, num1) == liftToType(l, T),
+    (LTS, num2) == liftsToTypes(ls, TS).

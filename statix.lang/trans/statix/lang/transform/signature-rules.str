@@ -8,7 +8,7 @@ imports
   signatures/statix/test/-
   statix/lang/util
   statix/lang/normalize/util
-  statix/lang/statics/rule-order
+  statix/lang/statics/legacy/rule-order
 
 rules
 

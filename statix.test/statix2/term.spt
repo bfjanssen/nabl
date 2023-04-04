@@ -1,0 +1,116 @@
+module statix2/term
+
+language Statix2Lang
+
+test correct list terms [[
+  resolve [1, 2, 3] == [8, 9]
+]] analysis succeeds
+
+test not all same types in list [[
+  resolve [1, "2", 3] == [8, 9]
+]] analysis fails
+
+test empty list matches type [[
+  resolve [] == [8, 9]
+]] analysis succeeds
+
+test empty list matches empty list type [[
+  resolve [] == []
+]] analysis succeeds
+
+test correct list tail typing [[
+  resolve [8|[9, 0] ] == [8, 9, 0]
+]] analysis succeeds
+
+test correct empty list tail typing [[
+  resolve [8, 9, 0|[] ] == [8, 9, 0]
+]] analysis succeeds
+
+test incorrect type in list head [[
+  resolve [8, "9"|[0] ] == [8, 9, 0]
+]] analysis fails
+
+test incorrect list tail type [[
+  resolve [8, 9|0] == [8, 9, 0]
+]] analysis fails
+
+test equal tuple typing [[
+  resolve (8, "9") == (9, "8")
+]] analysis succeeds
+
+test not equal tuple typing [[
+  resolve (8, "9") == ("9", 8)
+]] analysis fails
+
+test correct inline functional constraint term [[
+  resolve parseInt("8") == 8
+
+  rules
+    parseInt: string -> int
+]] analysis succeeds
+
+test non matching functional constraint term type [[
+  resolve parseInt("8") == "8"
+
+  rules
+    parseInt: string -> int
+]] analysis fails
+
+test non-functional constraint can't be used as term [[
+  resolve rule(8) == 8
+
+  rules
+    rule: int
+]] analysis fails
+
+test proper type ascription [[
+  resolve 8 : int == 8
+]] analysis succeeds
+
+test wrong type ascription [[
+  resolve 8 : string == 8
+]] analysis fails
+
+test type ascription non matching types [[
+  resolve "8" : int == 8
+]] analysis fails
+
+test new term is scope type [[
+  resolve new : scope == _
+]] analysis succeeds
+
+test astId term is of ast_id type [[
+  resolve astId(8) : astId == _
+]] analysis succeeds
+
+test both path Empty and path Step are path type [[
+  resolve _PathEmpty(_ : scope) : path == _PathStep(_ : path, _ : label, _ : scope) : path
+]] analysis succeeds
+
+test path Empty has to contain scope type [[
+  resolve _PathEmpty(8) == _
+]] analysis fails
+
+test first argument of path Step has to be path type [[
+  resolve _PathStep(8, _, _) == _
+]] analysis fails
+
+test second argument of path Step has to be label type [[
+  resolve _PathStep(_, 8, _) == _
+]] analysis fails
+
+test third argument of path Step has to be scope type [[
+  resolve _PathStep(_, _, 8) == _
+]] analysis fails
+
+test arithmetic term is of type int [[
+  resolve #(1+1) == 2
+]] analysis succeeds
+
+test arithmetic term with incorrect inner typing fails [[
+  resolve {x} x == "1", #(2-x) == _
+]] analysis fails
+
+test arithmetic term with unresolved variable fails [[
+  resolve #(2-x) == _
+]] analysis fails

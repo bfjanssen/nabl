@@ -1,0 +1,126 @@
+module statix/lang/statics/constraints
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/terms
+
+rules
+  constraintOk : scope * Constraint
+
+  constraintOk(_, CTrue()).
+
+  constraintOk(s, CFalse(msg)) :-
+    messageOk(s, msg).
+
+  constraintOk(s, CConj(l, r)) :-
+    constraintOk(s, l),
+    constraintOk(s, r).
+
+  constraintOk(s, CNew(vars)) :- {vs}
+    vs == varsToStringList(vars),
+    SCOPE() == typeOfVariables(s, vars),
+    setEscapeProperties(s, vs).
+
+  setEscapeProperties: scope * list(VARID)
+
+  setEscapeProperties(_, []).
+  setEscapeProperties(s, [var|tl]) :-
+    @var.escape := scopeIsEqual(getBarrier(s), getVarBarrier(s, var)).
+
+  constraintOk(s, CTellEdge(t1, Label(l), t2)) :-
+    SCOPE() == termOk(s, t1),
+    EDGE() == typeOfLabel(s, l),
+    SCOPE() == termOk(s, t2).
+
+  constraintOk(s, CEqual(l, r, msg)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, msg).
+
+  constraintOk(s, CInequal(l, r, msg)) :- {T1 T2}
+    T1 == termOk(s, l),
+    T2 == termOk(s, r),
+    T1 == T2 | error $[Cannot unify types [T1] and [T2]],
+    messageOk(s, msg).
+
+  constraintOk(s, C(cid, ts, msg)) :- {TS}
+    PRED(TS) == typeOfConstraint(s, cid) | error "Inline notation can only be used for non-functional constraints",
+    TS == termsOk(s, ts),
+    messageOk(s, msg).
+
+  constraintOk(s, CTry(c, msg)) :- {s_try}
+    new s_try, s_try -P-> s,
+    declareBarrier(s_try),
+    constraintOk(s_try, c),
+    tryMessageOk(s, msg).
+
+  constraintOk(s, CExists(vars, c)) :- {s_exists vs}
+    new s_exists, s_exists -P-> s,
+    vs == varsToStringList(vars),
+    declareVariables(s_exists, vars),
+    declareVarBarriers(s_exists, vs, getBarrier(s)),
+    constraintOk(s_exists, c).
+
+  constraintOk(s, CAstId(t1, t2)) :-
+    _ == termOk(s, t1),
+    AST_ID() == termOk(s, t2).
+
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(Wld()), _, _, t)) :-
+    try { false } | warning "Are you sure you want to assign a property to a wildcard?",
+    _ == termOk(s, t).
+  constraintOk(s, CAstProperty(Var2TermOrTermIndex(v@Var(_)), _, _, t)) :- {T}
+    T == typeOfVariable(s, v),
+    _ == termOk(s, t).
+
+  constraintOk(s, CArith(e1, _, e2, msg)) :-
+    arithExpOk(s, e1),
+    arithExpOk(s, e2),
+    messageOk(s, msg).
+
+rules
+  messageOk : scope * Message
+
+  messageOk(_, NoMessage()).
+  messageOk(s, Message(kind, content, origin)) :- {kindString}
+    kindString == kindToString(kind),
+    kind == Error() | error $[Use 'try' for [kindString]],
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
+
+  tryMessageOk : scope * Message
+
+  tryMessageOk(_, NoMessage()).
+  tryMessageOk(s, Message(_, content, origin)) :-
+    messageContentOk(s, content),
+    messageOriginOk(s, origin).
+
+  messageContentOk : scope * MessageContent
+  messageContentOk(_, NoMessageContent()).
+  messageContentOk(_, Str2MessageContent(_)).
+
+  messageContentOk(s, Formatted(parts)) :-
+    messageContentPartsOk(s, parts).
+
+  messageContentPartOk : scope * MessageContentPart
+  messageContentPartsOk maps messageContentPartOk(*, list(*))
+
+  messageContentPartOk(_, Text(_)).
+  messageContentPartOk(s, Term(t)) :-
+    _ == termOk(s, t).
+
+  messageOriginOk : scope * MessageOrigin
+  messageOriginOk(_, NoOrigin()).
+  messageOriginOk(_, Origin(Wld())) :-
+    try { false } | warning "Are you sure you want to use a wildcard as message origin?".
+
+  messageOriginOk(s, Origin(v@Var(_))) :-
+    _ == typeOfVariable(s, v).
+
+  kindToString : MessageKind -> string
+
+  kindToString(Warning()) = "warnings".
+  kindToString(Note()) = "notes".
+  kindToString(Error()) = "error".

@@ -19,10 +19,8 @@ rules
   // after lambda's, after normalizing queries
 
   normalize-functional-relations =
-    nabl2-custom-analysis-info-msg(|"| Normalize functional relations...");
     normalize-in-sections(normalize-functional-reldecl);
     bottomup(try(normalize-functional-query))
-
 
   normalize-functional-reldecl:
       RelDecl(x, t){a*} -> decl*

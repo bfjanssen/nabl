@@ -1,10 +1,10 @@
-module statix/lang/statics/precompiled
+module statix/lang/statics/legacy/precompiled
 
 imports
 
   signatures/statix/lang/-
 
-  statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
 rules
 

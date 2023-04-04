@@ -1,5 +1,8 @@
 module statix/lang/Common
 
+lexical sorts
+  INT ID UCID LCID VARID STRID FileId ModuleId
+
 lexical syntax
 
   INT = [0-9]+

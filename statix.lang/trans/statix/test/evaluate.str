@@ -51,9 +51,9 @@ rules
          filename := <guarantee-extension(|"evalpair.aterm")> path
 
   build-evaluation-pair: ast@Test(_, _) -> (body', spec')
-    with a      := <nabl2-get-ast-analysis> ast;
-         CustomAnalysis(ext) := <nabl2-get-custom-analysis> a;
-         ast'   := <normalize(|a); precompile(|a)> ast;
+    with a      := <stx-get-ast-analysis> ast;
+         CustomAnalysis(ext) := <stx--get-custom-final-analysis>;
+         ast'   := <normalize(|a);replace-tgts> ast;
          Test(body, _) := ast';
          spec   := <core-ast-to-spec-aterm(|a)> (ast', ext);
          spec'  := <stx--local-spec-from-spec> spec;
@@ -85,9 +85,9 @@ rules
   evaluate = evaluate(stx--is-concurrent-enabled)
 
   evaluate(concurrent): ast@Test(_, _) -> result
-    with a      := <nabl2-get-ast-analysis> ast;
-         CustomAnalysis(ext) := <nabl2-get-custom-analysis> a;
-         ast'   := <normalize(|a); precompile(|a)> ast;
+    with a      := <stx-get-ast-analysis> ast;
+         CustomAnalysis(ext) := <stx--get-custom-final-analysis>;
+         ast'   := <normalize(|a);replace-tgts> ast;
          Test(body, _) := ast';
          spec   := <core-ast-to-spec-aterm(|a)> (ast', ext);
          spec'  := <stx--local-spec-from-spec> spec;
@@ -106,9 +106,9 @@ rules
 
   compile-test-body(|fspecs* /* <= compiled modules */): ast@Test(_, _) -> (constraintTerm, specTerm)
     with
-      a                   := <nabl2-get-ast-analysis> ast;
-      CustomAnalysis(ext) := <nabl2-get-custom-analysis> a;
-      ast'                := <normalize(|a); precompile(|a)> ast;
+      a                   := <stx-get-ast-analysis> ast;
+      CustomAnalysis(ext) := <stx--get-custom-final-analysis>;
+      ast'                := <normalize(|a);replace-tgts> ast;
       Test(body, _)       := ast';
       constraintTerm      := <qualify-names(|a);eliminate-all;stx--index-ast(|"")> body;
       spec                := <core-ast-to-spec-aterm(|a)> (ast', ext);

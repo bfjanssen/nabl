@@ -1,0 +1,415 @@
+module statix/lang/statics/util
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+
+signature
+  sorts
+    LType
+    CKind
+
+  constructors
+    EDGE        : LType
+    RELATION    : IType -> LType
+
+    DeclaredC : CKind
+    DerivedC  : CKind
+
+  relations
+    mod         :   ModuleId * scope
+    predicate   :   ConstraintId -> IType
+    var         :   VARID -> TType
+    sort        :   SortId -> TType
+    cons        :   OpId * int -> (list(TType) * TType)
+    label       :   RelationId -> LType
+
+    cKind       :   ConstraintId -> CKind
+
+    rulePattern :   ConstraintId -> (list(Term) * scope)
+
+    barrier     :   scope
+    varBarrier  :   VARID -> scope
+
+  name-resolution
+    labels P I
+
+// Working with Relations
+rules
+  // MODULES
+  declareModule: scope * ModuleId * scope
+  resolveModuleScopes: scope * ModuleId -> list((path * (ModuleId * scope)))
+  resolveModuleNames: scope * scope -> list((path * (ModuleId * scope)))
+  scopeOfModule: scope * ModuleId -> scope
+  moduleOfScope: scope * scope -> ModuleId
+
+  declareModule(s, id, s_mod) :-
+    !mod[id, s_mod] in s,
+    resolveModuleScopes(s, id) == [_] | error $[Duplicate module [id]].
+
+  resolveModuleScopes(s, id) = ps :-
+    query mod
+      filter P* and { (x, _) :- x == id }
+      in s |-> ps.
+
+  resolveModuleNames(s, s_mod) = ps :-
+    query mod
+      filter P* and { (_, y) :- y == s_mod }
+      in s |-> ps.
+
+  scopeOfModule(s, id) = s_mod :- {id'}
+    resolveModuleScopes(s, id) == [(_,(id', s_mod))|_] | error $[Unresolved import module [id]],
+    @id.ref := id'.
+
+  moduleOfScope(s, s_mod) = id :-
+    resolveModuleNames(s, s_mod) == [(_,(id, _))|_].
+
+  // CONSTRAINTS
+  declareConstraint: scope * ConstraintId * IType
+  resolveConstraint: scope * ConstraintId -> list((path * (ConstraintId * IType)))
+  typeOfConstraint: scope * ConstraintId -> IType
+  scopeOfConstraint: scope * ConstraintId -> scope
+  noDuplicateImportedConstraints: scope * scope
+
+  declareConstraint(s, id, T) :-
+    !predicate[id, T] in s,
+    query predicate
+        filter e and { x :- x == id }
+        in s |-> [_] | error $[Duplicate constraint [id]],
+    try { query predicate
+            filter I+ and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing imported constraint [id]],
+    @id.qname := moduleOfScope(s, s).
+
+  resolveConstraint(s, id) = ps :-
+    query predicate
+        filter P*I* and { x :- x == id }
+        min $ < I
+        in s |-> ps.
+
+  typeOfConstraint(s, id) = T :- {id' p}
+    resolveConstraint(s, id) == [(p, (id', T))|_] | error $[Constraint [id] not defined],
+    @id.ref := id',
+    @id.qname := moduleOfScope(s, startOfPathScope(p)).
+
+  scopeOfConstraint(s, id) = startOfPathScope(p) :-
+    resolveConstraint(s, id) == [(p, _)|_].
+
+  noDuplicateImportedConstraints(s, s_import) :- {ps}
+    query predicate
+        filter I*
+        min $ < I
+        in s_import |-> ps,
+    areUniqueImportedConstraints(s, ps).
+
+  isUniqueImportedConstraint: scope * (path * (ConstraintId * IType))
+  areUniqueImportedConstraints maps isUniqueImportedConstraint(*, list(*))
+
+  isUniqueImportedConstraint(s, (_, (id, _))) :- {p ps}
+    query predicate
+        filter I+ and { x :- x == id }
+        in s |-> [(p, _)|ps],
+        uniqueConstraintDecls(ps, startOfPathScope(p)) | error $[Duplicate imported constraint [id]].
+
+  uniqueConstraintDecls: list((path * (ConstraintId * IType))) * scope
+
+  uniqueConstraintDecls([], _).
+  uniqueConstraintDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueConstraintDecls(ps, s).
+
+  // VARIABLES
+  declareVariable: scope * Var
+  declareVariables maps declareVariable(*, list(*))
+  resolveVariable: scope * VARID -> list((path * (VARID * TType)))
+  typeOfVariable: scope * Var -> TType
+  typeOfVariables maps typeOfVariable(*, list(*)) = *
+
+  declareVariable(s, Wld()).
+  declareVariable(s, v@Var(id)) :- {T}
+     !var[id, T] in s,
+     @v.type := T,
+     @id.declScope := s,
+     query var
+        filter e and { x :- x == id }
+        in s |-> [_] | error $[Duplicate variable [id]],
+    try { query var
+            filter P+ and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing variable [id]].
+
+  resolveVariable(s, id) = ps :-
+    query var
+        filter P* and { x :- x == id }
+        min $ < P
+        in s |-> ps.
+
+  typeOfVariable(s, Wld()) = T.
+  typeOfVariable(s, v@Var(id)) = T :- {p id'}
+    resolveVariable(s, id) == [(p,(id', T))|_] | error $[Variable [id] not defined],
+    @v.type := T,
+    @id.ref := id',
+    @id.declScope := startOfPathScope(p).
+
+  // SORTS
+  declareSort: scope * SortId * TType
+  resolveSort: scope * SortId -> list((path * (SortId * TType)))
+  typeOfSort: scope * SortId -> TType
+  noDuplicateImportedSorts: scope * scope
+
+  declareSort(s, id, T) :-
+    !sort[id, T] in s,
+    resolveSort(s, id) == [_] | error $[Duplicate sort [id]].
+
+  resolveSort(s, id) = ps :-
+    query sort
+        filter P*I* and { x :- x == id }
+        in s |-> ps.
+
+  typeOfSort(s, id) = T :- {id'}
+    resolveSort(s, id) == [(_,(id', T))|_] | error $[Sort [id] not defined],
+    @id.ref := id'.
+
+  noDuplicateImportedSorts(s, s_import) :- {ps}
+    query sort
+        filter I*
+        min $ < I
+        in s_import |-> ps,
+    areUniqueImportedSorts(s, ps).
+
+  isUniqueImportedSort: scope * (path * (SortId * TType))
+  areUniqueImportedSorts maps isUniqueImportedSort(*, list(*))
+
+  isUniqueImportedSort(s, (_, (id, _))) :- {p ps}
+    query sort
+        filter I+ and { x :- x == id }
+        in s |-> [(p, _)|ps],
+        uniqueSortDecls(ps, startOfPathScope(p)) | error $[Duplicate imported sort [id]].
+
+  uniqueSortDecls: list((path * (SortId * TType))) * scope
+
+  uniqueSortDecls([], _).
+  uniqueSortDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueSortDecls(ps, s).
+
+  // CONSTRUCTORS
+  declareCons: scope * OpId * int * (list(TType) * TType)
+  resolveCons: scope * OpId * int -> list((path * (OpId * int * (list(TType) * TType))))
+  typeOfCons: scope * OpId * int -> (list(TType) * TType)
+  noDuplicateImportedCons: scope * scope
+
+  declareCons(s, id, arity, T) :-
+    !cons[id, arity, T] in s,
+    resolveCons(s, id, arity) == [_] | error $[Duplicate constructor [id]/[arity]].
+
+  resolveCons(s, id, arity) = ps :-
+    query cons
+        filter P*I* and { (x, y) :- x == id, y == arity }
+        in s |-> ps.
+
+  typeOfCons(s, id, arity) = T :- {id' arity'}
+    resolveCons(s, id, arity) == [(_, (id', arity', T))|_] | error $[Constructor [id]/[arity] not defined],
+    @id.ref := id'.
+
+  noDuplicateImportedCons(s, s_import) :- {ps}
+    query cons
+        filter I*
+        min $ < I
+        in s_import |-> ps,
+    areUniqueImportedCons(s, ps).
+
+  isUniqueImportedCons: scope * (path * (OpId * int * (list(TType) * TType)))
+  areUniqueImportedCons maps isUniqueImportedCons(*, list(*))
+
+  isUniqueImportedCons(s, (_, (id, arity, _))) :- {p ps}
+    query cons
+        filter I+ and { (x, y) :- x == id, y == arity }
+        in s |-> [(p, _)|ps],
+        uniqueConsDecls(ps, startOfPathScope(p)) | error $[Duplicate imported constructor [id]/[arity]].
+
+  uniqueConsDecls: list((path * (OpId * int * (list(TType) * TType)))) * scope
+
+  uniqueConsDecls([], _).
+  uniqueConsDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueConsDecls(ps, s).
+
+  // RELATIONS OR LABELS
+  declareLabel: scope * RelationId * LType
+  resolveLabel: scope * RelationId -> list((path * (RelationId * LType)))
+  typeOfLabel: scope * RelationId -> LType
+  noDuplicateImportedLabels: scope * scope
+
+  declareLabel(s, id, T) :-
+    !label[id, T] in s,
+    query label
+        filter e and { x :- x == id }
+        in s |-> [_] | error $[Duplicate label/relation [id]],
+    try { query label
+            filter I and { x :- x == id }
+            in s |-> []
+    } | warning $[Shadowing imported label/relation [id]].
+
+  resolveLabel(s, id) = ps :-
+    query label
+        filter P*I? and { x :- x == id }
+        min $ < I
+        in s |-> ps.
+
+  typeOfLabel(s, id) = T :- {id' p}
+    resolveLabel(s, id) == [(p, (id', T))|_] | error $[Label [id] not defined],
+    @id.ref := id',
+    @id.qname := moduleOfScope(s, startOfPathScope(p)).
+
+  noDuplicateImportedLabels(s, s_import) :- {ps}
+    query label
+        filter I*
+        in s_import |-> ps,
+    areUniqueImportedLabels(s, ps).
+
+  isUniqueImportedLabel: scope * (path * (RelationId * LType))
+  areUniqueImportedLabels maps isUniqueImportedLabel(*, list(*))
+
+  isUniqueImportedLabel(s, (_, (id, _))) :- {p ps}
+    query label
+        filter I+ and { x :- x == id }
+        in s |-> [(p, _)|ps],
+        uniqueLabelDecls(ps, startOfPathScope(p)) | error $[Duplicate imported label/relation [id]].
+
+  uniqueLabelDecls: list((path * (RelationId * LType))) * scope
+
+  uniqueLabelDecls([], _).
+  uniqueLabelDecls([(p, _)|ps], s) :-
+    startOfPathScope(p) == s,
+    uniqueLabelDecls(ps, s).
+
+  // KIND OF CONSTRAINTS
+  setCKind: scope * ConstraintId * CKind
+  resolveCKind: scope * ConstraintId -> list((path * (ConstraintId * CKind)))
+  getCKind: scope * ConstraintId -> CKind
+
+  setCKind(s, id, kind) :-
+    !cKind[id, kind] in s.
+
+  resolveCKind(s, id) = ps :-
+    query cKind
+        filter I* and { x :- x == id }
+        in s |-> ps.
+
+  getCKind(s, id) = kind :-
+    resolveCKind(s, id) == [(_, (_, kind))|_].
+
+  // RULE PATTERNS
+  declarePattern: scope * ConstraintId * list(Term) * scope
+  resolvePatterns: scope * ConstraintId -> list((path * (ConstraintId * (list(Term) * scope))))
+
+  declarePattern(s, id, pattern, s_decl) :-
+    !rulePattern[id, (pattern, s_decl)] in s.
+
+  resolvePatterns(s, id) = ps :-
+    query rulePattern
+        filter I* and { x :- x == id }
+        in s |-> ps.
+
+  // BARRIERS
+  declareBarrier: scope
+  getBarrier: scope -> scope
+
+  declareBarrier(s) :-
+    !barrier[s] in s.
+
+  getBarrier(s) = s_barrier :-
+    query barrier filter P* min $ < P in s |-> [(_, s_barrier)|_].
+
+  declareVarBarrier: scope * VARID * scope
+  declareVarBarriers maps declareVarBarrier(*, list(*), *)
+  getVarBarrier: scope * VARID -> scope
+
+  declareVarBarrier(s, id, s_barrier) :-
+    !varBarrier[id, s_barrier] in s.
+
+  getVarBarrier(s, id) = s_barrier :-
+    query varBarrier
+      filter P* and { x :- x == id }
+      min $ < P
+      in s |-> [(_, (_, s_barrier))|_].
+
+// Utility
+rules
+  sortRefListLength : list(SortRef) -> int
+
+  sortRefListLength([]) = 0.
+  sortRefListLength([_|tail]) = #(1 + sum) :-
+    sum == sortRefListLength(tail).
+
+  termListLength : list(Term) -> int
+
+  termListLength([]) = 0.
+  termListLength([_|tail]) = #(1 + sum) :-
+    sum == termListLength(tail).
+
+  concatTermList : list(Term) * list(Term) -> list(Term)
+
+  concatTermList([], ys) = ys.
+  concatTermList([x|xs],ys) = [x|concatTermList(xs, ys)].
+
+  concatVarList : list(Var) * list(Var) -> list(Var)
+
+  concatVarList([], ys) = ys.
+  concatVarList([x|xs],ys) = [x|concatVarList(xs, ys)].
+
+  concatTTypeList : list(TType) * list(TType) -> list(TType)
+
+  concatTTypeList([], ys) = ys.
+  concatTTypeList([x|xs],ys) = [x|concatTTypeList(xs, ys)].
+
+  removeDuplicateVars : list(Var) -> list(Var)
+
+  removeDuplicateVars([]) = [].
+  removeDuplicateVars([v@Var(x)|xs]) = [v|removeDuplicateVars(xs')] :-
+    xs' == filterVars(xs, x).
+
+  filterVars : list(Var) * string -> list(Var)
+
+  filterVars([], _) = [].
+  filterVars([Var(id)|xs], id) = filterVars(xs, id).
+  filterVars([x|xs], f) = [x|filterVars(xs, f)].
+
+  varsToStringList : list(Var) -> list(string)
+
+  varsToStringList([]) = [].
+  varsToStringList([Wld()|xs]) = varsToStringList(xs).
+  varsToStringList([Var(x)|xs]) = [x|varsToStringList(xs)].
+
+  inType: IType -> TType
+
+  inType(PRED(TS)) = typesToType(TS).
+  inType(FUN(TS, _)) = typesToType(TS).
+
+  inOutType: IType -> TType
+
+  inOutType(PRED(TS)) = typesToType(TS).
+  inOutType(FUN(TS, RT)) = typesToType(concatTTypeList(TS, [RT])).
+
+  typesToType: list(TType) -> TType
+
+  typesToType([ty]) = ty.
+  typesToType(TS) = TUPLE(TS).
+
+  flattenListTail : Term -> Term
+
+  flattenListTail(ListTail(hs, List(tail))) = List(concatTermList(hs, tail)).
+  flattenListTail(ListTail(hs1, ListTail(hs2, t))) = flattenListTail(ListTail(concatTermList(hs1, hs2), t)).
+  flattenListTail(t) = t.
+
+  startOfPathScope : path -> scope
+
+  startOfPathScope(_PathEmpty(s)) = s.
+  startOfPathScope(_PathStep(_, _, s)) = s.
+
+  scopeIsEqual : scope * scope -> int
+
+  scopeIsEqual(s, s) = 1.
+  scopeIsEqual(_, _) = 0.

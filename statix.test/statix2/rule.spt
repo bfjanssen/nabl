@@ -1,0 +1,151 @@
+module statix2/rule
+
+language Statix2Lang
+
+
+fixture [[
+module test
+
+rules
+  [[...]]
+]]
+
+// BASIC RULES
+
+// Matching
+test correct integer rule [[
+  rule: int * int
+  rule(7, 8).
+]] analysis succeeds
+
+test incorrect integer rule [[
+  rule: int * int
+  rule(7, "hi").
+]] analysis fails
+
+test correct string rule [[
+  rule: string * string
+  rule("hi", "hello").
+]] analysis succeeds
+
+test incorrect string rule [[
+  rule: string * string
+  rule("hi", 9).
+]] analysis fails
+
+test correct tuple rule [[
+  rule: (string * int)
+  rule(("hi", 8)).
+]] analysis succeeds
+
+test incorrect tuple type rule [[
+  rule: (string * int)
+  rule((8, "hi")).
+]] analysis fails
+
+test larger tuple size rule [[
+  rule: (string * int)
+  rule(("hi", 8, 8)).
+]] analysis fails
+
+test smaller tuple size rule [[
+  rule: (string * int * int)
+  rule(("hi", 8)).
+]] analysis fails
+
+test correct list rule [[
+  rule: list(int)
+  rule([8, 7, 9]).
+]] analysis succeeds
+
+test correct empty list rule [[
+  rule: list(int)
+  rule([]).
+]] analysis succeeds
+
+test incorrect list rule [[
+  rule: list(int)
+  rule([8, 7, "hi"]).
+]] analysis fails
+
+test correct list tail rule [[
+  rule: list(int)
+  rule([8, 6| [7, 9] ]).
+]] analysis succeeds
+
+test correct empty tail rule [[
+  rule: list(int)
+  rule([8| [] ]).
+]] analysis succeeds
+
+test incorrect list tail (head) rule [[
+  rule: list(int)
+  rule([8, [9]| [7, 9] ]).
+]] analysis fails
+
+test incorrect list tail (tail) rule [[
+  rule: list(int)
+  rule([8, 6| 9 ]).
+]] analysis fails
+
+test correct variable match rule [[
+  rule: int * int
+  rule(x, y).
+]] analysis succeeds
+
+test correct wildcard match rule [[
+  rule: int * int
+  rule(_, _).
+]] analysis succeeds
+
+test incorrect rule arity [[
+  rule: int * int
+  rule(9, 8, 7).
+]] analysis fails
+
+test duplicate variable correct match [[
+  rule: int * int
+  rule(x, x).
+]] analysis succeeds
+
+test duplicate variable incorrect type match [[
+  rule: int * string
+  rule(x, x).
+]] analysis fails
+
+test name shadowing of variable gives a warning [[
+  rule: int
+  rule(x) :- {[[x]]} x == "hi".
+]] analysis succeeds
+   1 warning at #1
+
+// Duplicates & missing declarations
+test duplicate rulename [[
+   rule: int * int
+   rule: string * string
+]] analysis fails
+
+test missing declaration [[
+    rule(8, 9).
+]] analysis fails
+
+// FUNCTIONAL RULES
+test correct simple functional rule [[
+  rule: int -> string
+  rule(8) = "eight".
+]] analysis succeeds
+
+test incorrect functional rule result [[
+  rule: int -> string
+  rule(8) = 9.
+]] analysis fails
+
+test correct functional variable rule [[
+  rule: int -> int
+  rule(x) = x.
+]] analysis succeeds
+
+test incorrect functional variable rule [[
+  rule: int -> string
+  rule(x) = x.
+]] analysis fails

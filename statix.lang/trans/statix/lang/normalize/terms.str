@@ -18,13 +18,11 @@ rules
   // none of these depend on analysis
 
   normalize-terms =
-    nabl2-custom-analysis-info-msg(|"| Normalize terms...");
     bottomup(
       try(normalize-ast-ids)
     ; try(normalize-scoped(replace-pattern,fail,not(pattern-no-add),pattern-to-c))
     ; try(normalize-scoped(replace-term,id,id,term-to-c))
     )
-
 
 rules
 

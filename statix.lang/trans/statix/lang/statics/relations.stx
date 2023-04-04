@@ -1,0 +1,95 @@
+module statix/lang/statics/relations
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+  statix/lang/statics/types
+  statix/lang/statics/terms
+  statix/lang/statics/constraints
+  statix/lang/statics/rules
+
+rules
+  relDeclOk: scope * RelDecl
+  relDeclsOk maps relDeclOk(*, list(*))
+
+  relDeclOk(s, RelDecl(Label(rel), a@SimpleType(tys))) :- {TS}
+    TS == sortRefsToTypes(s, tys),
+    @rel.qname := moduleOfScope(s, s),
+    declareLabel(s, rel, RELATION(PRED(TS))),
+    @a.type := PRED(TS).
+
+  relDeclOk(s, RelDecl(Label(rel), a@FunType(tys, rty))) :- {TS RT}
+    TS == sortRefsToTypes(s, tys),
+    RT == sortRefToType(s, rty),
+    @rel.qname := moduleOfScope(s, s),
+    declareLabel(s, rel, RELATION(FUN(TS, RT))),
+    @a.type := FUN(TS, RT).
+
+  resolutionParamsOk maps resolutionParamOk(*, list(*))
+  resolutionParamOk: scope * ResolutionParam
+  declareLabels: scope * list(Label)
+
+  resolutionParamOk(s, Labels(ls)) :-
+    declareLabels(s, ls).
+
+  declareLabels(s, []).
+  declareLabels(s, [Label(l)|xs]) :-
+    declareLabel(s, l, EDGE()),
+    @l.qname := moduleOfScope(s, s),
+    declareLabels(s, xs).
+
+  edgeRefOk: scope * EdgeRef
+
+  edgeRefOk(_, TGT()).
+  edgeRefOk(s, Label2EdgeRef(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelPairOk: scope * LabelPair
+  labelPairsOk maps labelPairOk(*, list(*))
+
+  labelPairOk(s, LabelPair(l1, l2)) :-
+    edgeRefOk(s, l1),
+    edgeRefOk(s, l2).
+
+  labelOrdOk: scope * LabelOrd
+  labelOrdOk(s, LabelPairs2LabelOrd(LabelPairs2LabelPairs(ls))) :-
+    labelPairsOk(s, ls).
+
+  labelRegExOk: scope * LabelRE
+
+  labelRegExOk(_, Empty()).
+  labelRegExOk(_, Epsilon()).
+
+  labelRegExOk(s, Label2LabelRE(Label(l))) :-
+    EDGE() == typeOfLabel(s, l).
+
+  labelRegExOk(s, Closure(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Neg(lre)) :-
+    labelRegExOk(s, lre).
+
+  labelRegExOk(s, Concat(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, And(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+  labelRegExOk(s, Or(lre1, lre2)) :-
+    labelRegExOk(s, lre1),
+    labelRegExOk(s, lre2).
+
+rules
+  constraintOk(s, CTellRel(Label2RelRef(Label(rid)), Terms2CommaTerms(ts), st)) :- {T}
+    RELATION(T) == typeOfLabel(s, rid),
+    relationTypesMatch(T, termsOk(s, ts)),
+    SCOPE() == termOk(s, st).
+
+  relationTypesMatch: IType * list(TType)
+
+  relationTypesMatch(PRED(TS), TS).
+  relationTypesMatch(FUN(ATS, RT), TS) :-
+    TS == concatTTypeList(ATS, [RT]).

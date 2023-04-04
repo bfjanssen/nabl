@@ -13,6 +13,9 @@ template options
  * Modules                                                        *
  ******************************************************************/
 
+context-free sorts
+  Module Section Import
+
 context-free syntax
 
   Module.Module = <
@@ -51,6 +54,9 @@ lexical syntax
  * User Constraints                                               *
  ******************************************************************/
 
+context-free sorts
+  Signature CDecl CInd Rule RuleName RuleHead Constraint HoConstraint
+
 context-free syntax
 
   Signature.Constraints = <
@@ -77,6 +83,9 @@ context-free syntax
   Constraint.C = [[ConstraintId]([{Term ", "}*])[Message]]
 
   HoConstraint.LLam = <{ <{Term ", "}*> :- <Constraint> }>
+
+lexical sorts
+  ConstraintId
 
 lexical syntax
 
@@ -129,6 +138,9 @@ lexical syntax
  * AST Constraints                                                *
  ******************************************************************/
 
+context-free sorts
+  AstProperty AstPropertyOp TermOrTermIndex
+
 context-free syntax
 
   Constraint.CAstId       = <astId(<Term>, <Term>)>
@@ -141,6 +153,9 @@ context-free syntax
 
   TermOrTermIndex = Var
 
+lexical sorts
+  AstPropertyId
+
 lexical syntax
 
   AstPropertyId = ID
@@ -152,6 +167,9 @@ lexical syntax
 /******************************************************************
  * Relations                                                      *
  ******************************************************************/
+
+context-free sorts
+  RelDecl RelRef
 
 context-free syntax
 
@@ -170,6 +188,9 @@ syntax
 
   Constraint-CF.CTellRel = "!" RelRef-CF "[" CommaTerms-CF "]" LAYOUT?-CF "in" LAYOUT?-CF Term-CF
 
+lexical sorts
+  RelationId
+
 lexical syntax
 
   RelationId = ID
@@ -181,6 +202,9 @@ lexical syntax
 /******************************************************************
  * Scope Graph                                                    *
  ******************************************************************/
+
+context-free sorts
+  ResolutionParam Label EdgeRef LabelPairs LabelPair LabelOrd LabelRE
 
 context-free syntax
 
@@ -196,7 +220,7 @@ context-free syntax
   Label.Label = RelationId
 
   EdgeRef     = Label
-  EdgeRef.EOP = "$"
+  EdgeRef.TGT = "$"
 
   LabelPairs          = <<{LabelPair ", "}*>>
   LabelPair.LabelPair = [[EdgeRef] < [EdgeRef]]
@@ -220,11 +244,17 @@ context-free priorities
   > LabelRE.And
   > LabelRE.Or
 
+context-free sorts
+  Path
+
 context-free syntax
 
   Term = Path
 
   Path = PathLit
+
+context-free sorts
+  PathLit
 
 syntax
 
@@ -232,6 +262,9 @@ syntax
   PathLit-CF.PathStep  = "_PathStep" "(" LAYOUT?-CF Term-CF LAYOUT?-CF "," LAYOUT?-CF Term-CF LAYOUT?-CF "," LAYOUT?-CF Term-CF LAYOUT?-CF ")"
 
   Constraint-CF.CTellEdge = Term-CF LAYOUT?-CF "-" Label-CF "->" LAYOUT?-CF Term-CF
+
+lexical sorts
+  NamespaceId
 
 lexical syntax
 
@@ -246,6 +279,9 @@ lexical syntax
 /******************************************************************
  * Resolve & Query
  ******************************************************************/
+
+context-free sorts
+  CResolveQuery QueryTarget QueryFilter QueryMin
 
 context-free syntax
 
@@ -278,6 +314,9 @@ lexical syntax
 /******************************************************************
  * Sorts & Constructors                                           *
  ******************************************************************/
+
+context-free sorts
+  SortDecl Sort SortRef OpDecl OpSort Type
 
 context-free syntax
 
@@ -316,6 +355,9 @@ context-free syntax
 
   Type.SimpleType = [[{SortRef " * "}*]]
 
+lexical sorts
+  SortId OpId
+
 lexical syntax
 
   SortId = STRID
@@ -331,6 +373,9 @@ lexical syntax
 /******************************************************************
  * Terms                                                          *
  ******************************************************************/
+
+context-free sorts
+  Var Int Term CommaTerms SpaceTerms
 
 context-free syntax
 
@@ -358,11 +403,17 @@ context-free priorities
     Term.As
   > Term.Ascribe
 
+context-free sorts
+  Str
+
 syntax
 
   Term-CF.Op         = OpId-LEX "(" LAYOUT?-CF CommaTerms-CF LAYOUT?-CF ")"
 
   Str-CF.Str        = "\"" StrChars-LEX "\""
+
+lexical sorts
+  StrChars StrChar
 
 lexical syntax
 
@@ -379,6 +430,9 @@ lexical restrictions
  * Arithmetic                                                          *
  ******************************************************************/
 
+context-free sorts
+  ArithOp
+
 syntax
 
   Constraint-CF.CArith = ArithExp-CF LAYOUT?-CF "#" ArithOp-CF LAYOUT?-CF ArithExp-CF LAYOUT?-CF Message-CF
@@ -390,28 +444,34 @@ syntax
   ArithOp-CF.GreaterThan      = ">"
   ArithOp-CF.LessThan         = "<"
 
+context-free sorts
+  ArithExp
+
 context-free syntax
 
   ArithExp     = Int
   ArithExp     = Var
-  ArithExp.Add = <<ArithExp> + <ArithExp>> {left}
-  ArithExp.Mul = <<ArithExp> * <ArithExp>> {left}
-  ArithExp.Sub = <<ArithExp> - <ArithExp>> {left}
-  ArithExp.Min = <min(<ArithExp>, <ArithExp>)>
-  ArithExp.Max = <max(<ArithExp>, <ArithExp>)>
-  ArithExp.Mod = <<ArithExp> mod <ArithExp>> {left}
-  ArithExp.Div = <<ArithExp> div <ArithExp>> {left}
+  ArithExp.AAdd = <<ArithExp> + <ArithExp>> {left}
+  ArithExp.AMul = <<ArithExp> * <ArithExp>> {left}
+  ArithExp.ASub = <<ArithExp> - <ArithExp>> {left}
+  ArithExp.AMin = <min(<ArithExp>, <ArithExp>)>
+  ArithExp.AMax = <max(<ArithExp>, <ArithExp>)>
+  ArithExp.AMod = <<ArithExp> mod <ArithExp>> {left}
+  ArithExp.ADiv = <<ArithExp> div <ArithExp>> {left}
   ArithExp     = <(<ArithExp>)> {bracket}
 
 context-free priorities
 
-    {left: ArithExp.Mul ArithExp.Div ArithExp.Mod}
-  > {left: ArithExp.Add ArithExp.Sub}
+    {left: ArithExp.AMul ArithExp.ADiv ArithExp.AMod}
+  > {left: ArithExp.AAdd ArithExp.ASub}
 
 
 /******************************************************************
  * Messages                                                       *
  ******************************************************************/
+
+context-free sorts
+  Message MessageKind
 
 context-free syntax
 
@@ -422,6 +482,9 @@ context-free syntax
   MessageKind.Warning    = <warning>
   MessageKind.Note       = <note>
 
+context-free sorts
+  MessageContent MessageOrigin
+
 syntax
 
   MessageContent-CF.Formatted = "$[" MessageContentPart-CF* "]"
@@ -429,13 +492,19 @@ syntax
   MessageOrigin-CF.NoOrigin =
   MessageOrigin-CF.Origin   = "@" Var-CF
 
+context-free sorts
+  MessageContentPart
+
 context-free syntax
 
-  MessageContent.NoMessage =
-  MessageContent           = Str
+  MessageContent.NoMessageContent   =
+  MessageContent                    = Str
 
   MessageContentPart.Term = <[<Term>]>
   MessageContentPart.Text = MessageChars
+
+lexical sorts
+  MessageChars MessageChar
 
 lexical syntax
 

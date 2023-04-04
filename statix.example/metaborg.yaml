@@ -4,9 +4,13 @@ name: StatixExample
 dependencies:
   compile:
   - org.metaborg:statix.lang:${metaborgVersion}
+  - org.metaborg:statix2.lang:${metaborgVersion}
+  - org.metaborg:org.metaborg.meta.lang.template:${metaborgVersion}
 runtime:
   nabl2:
     debug: analysis files custom
 sources:
 - language: StatixLang
+  directory: src
+- language: Statix2Lang
   directory: src

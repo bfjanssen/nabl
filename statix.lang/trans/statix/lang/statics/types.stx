@@ -1,0 +1,58 @@
+module statix/lang/statics/types
+
+imports
+  signatures/statix/lang/Core-sig
+  signatures/statix/lang/NoParse-sig
+  signatures/statix/lang/Type-sig
+  statix/lang/statics/util
+
+rules
+  sortRefToType: scope * SortRef -> TType
+  sortRefsToTypes maps sortRefToType(*, list(*)) = list(*)
+
+  sortRefToType(_, a@IntSort()) = INT() :-
+    @a.type := INT().
+  sortRefToType(_, a@StringSort()) = STRING() :-
+    @a.type := STRING().
+  sortRefToType(_, a@PathSort()) = PATH() :-
+    @a.type := PATH().
+  sortRefToType(_, a@LabelSort()) = LABEL() :-
+    @a.type := LABEL().
+  sortRefToType(_, a@ScopeSort()) = SCOPE() :-
+    @a.type := SCOPE().
+  sortRefToType(_, a@AstIdSort()) = AST_ID() :-
+    @a.type := AST_ID().
+
+  sortRefToType(s, a@ListSort(ty)) = LIST(T) :-
+    T == sortRefToType(s, ty),
+    @a.type := LIST(T).
+
+  sortRefToType(s, a@TupleSort(tys)) = TUPLE(TS) :-
+    TS == sortRefsToTypes(s, tys),
+    @a.type := TUPLE(TS).
+
+  sortRefToType(s, Sort2SortRef(a@SimpleSort(sid))) = T :-
+    T == typeOfSort(s, sid),
+    @a.type := T.
+
+rules
+  sortDeclOk: scope * SortDecl
+  sortDeclsOk maps sortDeclOk(*, list(*))
+
+  sortDeclOk(s, SortDecl(id)) :-
+    declareSort(s, id, SORT(id)).
+
+  sortDeclOk(s, SortAlias(id, sref)) :-
+    declareSort(s, id, sortRefToType(s, sref)).
+
+  opDeclOk: scope * OpDecl
+  opDeclsOk maps opDeclOk(*, list(*))
+
+  opDeclOk(s, OpDecl(id, ConstOp(SimpleSort(sid)))) :-
+    SORT(sid) == typeOfSort(s,sid) | error $[Can't define constructor for sort alias [sid]] ,
+    declareCons(s, id, 0, ([], SORT(sid))).
+
+  opDeclOk(s, OpDecl(id, ArrowOp(refs, SimpleSort(sid)))) :- {len}
+    len == sortRefListLength(refs),
+    SORT(sid) == typeOfSort(s, sid) | error $[Can't define constructor for sort alias [sid]],
+    declareCons(s, id, len, (sortRefsToTypes(s, refs), SORT(sid))).

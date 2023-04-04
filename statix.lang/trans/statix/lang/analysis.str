@@ -3,21 +3,34 @@ module statix/lang/analysis
 imports
 
   libspoofax/analysis/constraint
+  libspoofax/sdf/pp
+  libspoofax/core/parse
+  libspoofax/resource/path
 
   nabl2shared
   nabl2/shared/ast // for index-ast
   nabl2runtime
   nabl2/api
-  nabl2/runtime/analysis/main
+  nabl2/runtime/analysis/-
 
   signatures/statix/lang/-
 
   statix/lang/-
   statix/lang/statics/-
+  statix/lang/statics/legacy/-
 
   statix/runtime/pp
+  statix/runtime/services
+  statix/runtime/analysis
+  statixruntime
+  statix/api
+
   pp/statix/lang/-
   pp
+
+  injections/-
+  injections/statix/lang/NoParse-injections
+  libspoofax/term/origin
 
 signature
   sorts CustomAnalysis constructors
@@ -26,14 +39,51 @@ signature
 
 rules // Analysis
 
-  editor-analyze = nabl2-analyze(desugar-all)
+  editor-analyze = stx-editor-analyze(pre-analyze, post-analyze, analyze-custom-unit, analyze-custom-final
+                                        |"statix/lang/statics/core", "projectOk", "fileOk")
+  pre-analyze  = desugar-all; origin-track-forced(explicate-injections-Statix-Start)
+  post-analyze = origin-track-forced(implicate-injections-Statix-Start)
+
+  legacy-analyze: path -> (ast, analysis)
+    with results := <nabl-analysis-results> path
+       ; Full(ast, CompatUnitAnalysis(_, analysis), _, _, _) := <getfirst(?(path, <id>))> results
+
+  nabl-analysis-results: path -> results
+    with file* := <get-all-files> path
+       ; prj   := (".", Added(()))
+       ; AnalysisResult(results) := <nabl2-analyze(desugar-all)> AnalyzeMulti(prj, file*, (), ())
+
+  stx-analysis-results: path -> results
+    with file* := <get-all-files> path
+       ; prj   := (".", Added(()))
+       ; AnalysisResult(results) := <stx--editor-analyze(pre-analyze, post-analyze, analyze-custom-unit, analyze-custom-final
+                                        |"statix/lang/statics/core", "projectOk", "fileOk")> AnalyzeMulti(prj, file*, (), ())
+
+  get-all-files: path -> files
+    with path* := <current-language-source-and-include-files>
+       ; files := <map(\ p -> (p, Added(<parse-file> p)) \)> path*
+
+  analyze-custom-unit:
+      (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
+    with e* := <check-module-name(|resource)> ast
+       ; ext-c* := <collect-ext-constraints> ast
+       ; w* := <check-accidental-axioms> ast
+
+  analyze-custom-final:
+       (analysis, units) -> ([unit-e*, ext-e*], [unit-w*], [], ca)
+    with unit-e* := <map(?CustomUnitAnalysis(<id>, _, _));concat> units
+       ; unit-w* := <map(?CustomUnitAnalysis(_, <id>, _));concat> units
+       ; ext-c*  := <map(?CustomUnitAnalysis(_, _, <id>));concat> units
+       ; ext-c'* := <explicate-ext-constraints(|analysis)> ext-c*
+       ; (ext, ext-e*) := <solve-ext-constraints> ext-c'*
+       ; ca := CustomAnalysis(ext)
 
   nabl2-custom-analysis-unit-hook:
       (resource, ast, _) -> CustomUnitAnalysis(e*, w*, ext-c*)
     with nabl2-custom-analysis-info-msg(|"Extra file analysis...")
        ; n-e* := <check-module-name(|resource)> ast
        ; nabl2-custom-analysis-info-msg(|"| collecting scope extensions...")
-       ; ext-c* := <collect-ext-constraints> ast
+       ; ext-c* := <collect-ext-constraints-legacy> ast
        ; nabl2-custom-analysis-info-msg(|"| detecting accidental axioms...")
        ; ax-w* := <check-accidental-axioms> ast
      //; nabl2-custom-analysis-info-msg(|"| checking variable usage...")
@@ -43,7 +93,7 @@ rules // Analysis
        ; w* := [ax-w*, vu-w*]
 
   nabl2-custom-analysis-final-hook(|a):
-      (resource, _, units) -> result
+      (_, _, units) -> result
     with nabl2-custom-analysis-info-msg(|"Finishing file analysis...")
        ; unit-e* := <map(?CustomUnitAnalysis(<id>, _, _));concat> units
        ; unit-w* := <map(?CustomUnitAnalysis(_, <id>, _));concat> units
@@ -57,7 +107,7 @@ rules // Analysis
        ; or-e* := <detect-overlapping-rules(|a)>
        ; ext-c* := <map(?CustomUnitAnalysis(_, _, <id>));concat> units
        ; nabl2-custom-analysis-info-msg(|"| explicate scope extensions...")
-       ; ext-c'* := <explicate-ext-constraints(|a)> ext-c*
+       ; ext-c'* := <explicate-ext-constraints-legacy(|a)> ext-c*
        ; <ext-log(prettyprint-Statix-ExtConstraints|"Extension constraints:")> ext-c'*
        ; nabl2-custom-analysis-info-msg(|"| solve scope extensions...")
        ; (ext, ext-e*) := <solve-ext-constraints> ext-c'*
@@ -65,6 +115,10 @@ rules // Analysis
        ; ca := CustomAnalysis(ext)
 
   empty-custom-analysis = !([], CustomAnalysis([]))
+
+  editor-hover = stx-editor-hover(pp-partial-Statix-string)
+
+  editor-resolve = stx-editor-resolve
 
   check-module-name(|path): ast -> e*
     with ext := <get-extension> path

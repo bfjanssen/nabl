@@ -1,0 +1,69 @@
+module statix/lang/statics/queries
+
+imports
+  statix/lang/statics/util
+  statix/lang/statics/terms
+  statix/lang/statics/rules
+  statix/lang/statics/constraints
+  statix/lang/statics/relations
+
+rules
+  constraintOk(s, CResolveQuery2Constraint(q)) :-
+    queryOk(s, q).
+
+  queryOk: scope * CResolveQuery
+
+  queryOk(s, CResolveQuery(tgt, fltr, qmin, st, result, msg)) :- {T labels}
+    T == queryTargetToType(s, tgt),
+    filterOk(s, fltr, inType(T)),
+    minOk(s, qmin, inType(T)),
+    SCOPE() == termOk(s, st),
+    LIST(TUPLE([PATH(), inOutType(T)])) == termOk(s, result),
+    messageOk(s, msg),
+    query label filter P*I? in s |-> labels,
+    @tgt.lbls := labels.
+
+  queryTargetToType: scope * QueryTarget -> IType
+
+  queryTargetToType(_, a@EOP()) = PRED([SCOPE()]) :-
+    @a.type := PRED([SCOPE()]).
+  queryTargetToType(s, RelRef2QueryTarget(Label2RelRef(a@Label(l)))) = T :-
+    RELATION(T) == typeOfLabel(s, l),
+    @a.type := T.
+
+  filterOk: scope * QueryFilter * TType
+
+  filterOk(s, Filter(lre, hc), T) :-
+    labelRegExOk(s, lre),
+    hoConstraintOk(s, hc, [T]).
+
+  minOk: scope * QueryMin * TType
+
+  minOk(s, Min(ord, hc), T) :-
+    labelOrdOk(s, ord),
+    hoConstraintOk(s, hc, [T, T]).
+
+rules
+  hoConstraintOk: scope * HoConstraint * list(TType)
+
+  hoConstraintOk(_, a@LTrue(), TS) :-
+    @a.type := PRED(TS).
+  hoConstraintOk(_, a@LFalse(), TS) :-
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@LLam(args, cnstrnt), TS) :- {s_hc vars}
+    new s_hc, s_hc -P-> s,
+    declareBarrier(s_hc),
+    vars == removeDuplicateVars(patternsOk(s_hc, args, TS)),
+    declareVariables(s_hc, vars),
+    declareVarBarriers(s, varsToStringList(vars), getBarrier(s)),
+    constraintOk(s_hc, cnstrnt),
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@LC(cid), TS) :-
+    PRED(TS) == typeOfConstraint(s, cid),
+    @a.type := PRED(TS).
+
+  hoConstraintOk(s, a@EQ(t), [T]) :-
+    T == termOk(s, t),
+    @a.type := PRED([T]).

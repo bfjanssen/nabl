@@ -1,5 +1,8 @@
 module statix/lang/Layout
 
+lexical sorts
+  EOF LineComment BlockComment CommentText CommentChar CommentSlash CommentAsterisk
+
 lexical syntax
 
   LAYOUT = [\t\ \r\n]

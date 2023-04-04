@@ -43,25 +43,25 @@ public class ArithTerms {
         return M.<ArithExpr>casesFix(m -> Arrays.asList(
             StatixTerms.varTerm().map(TermExpr::new),
             StatixTerms.intTerm().map(TermExpr::new),
-            M.appl2("Add", m, m, (t, ae1, ae2) -> {
+            M.appl2("AAdd", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("+", ae1, ae2, new Add());
             }),
-            M.appl2("Mul", m, m, (t, ae1, ae2) -> {
+            M.appl2("AMul", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("*", ae1, ae2, new Mul());
             }),
-            M.appl2("Sub", m, m, (t, ae1, ae2) -> {
+            M.appl2("ASub", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("-", ae1, ae2, new Sub());
             }),
-            M.appl2("Min", m, m, (t, ae1, ae2) -> {
+            M.appl2("AMin", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("min", ae1, ae2, new Min());
             }),
-            M.appl2("Max", m, m, (t, ae1, ae2) -> {
+            M.appl2("AMax", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("max", ae1, ae2, new Max());
             }),
-            M.appl2("Mod", m, m, (t, ae1, ae2) -> {
+            M.appl2("AMod", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("mod", ae1, ae2, new Mod());
             }),
-            M.appl2("Div", m, m, (t, ae1, ae2) -> {
+            M.appl2("ADiv", m, m, (t, ae1, ae2) -> {
                 return new BinExpr("div", ae1, ae2, new Div());
             })
         ));

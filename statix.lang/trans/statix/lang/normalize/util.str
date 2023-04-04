@@ -8,11 +8,72 @@ imports
   nabl2/shared/vars
   nabl2/api
 
+  statix/api
+
   statix/runtime/constraints
 
   signatures/statix/lang/-
   statix/lang/statics/-
   statix/lang/util
+
+signature
+  constructors
+    StxType : Term -> Annotation
+    NaBL2Type : Term -> Annotation
+    OfSort : Term -> Annotation
+    PRED : list(Term) -> Term
+    FUN : list(Term) * Term -> Term
+    CVar : string * string -> Term
+
+rules
+  //TEMPORARY LOCATION FOR THESE ANNOTATION STRATEGIES
+
+  stx-add-anno-types(|a) = topdown(try(stx--add-anno-type(|a)))
+
+  stx--add-anno-type(|a): t -> <stx-set-anno-type(|ty'')> t
+    where
+      ty := <stx-get-ast-type(|a)> t;
+      ty' := <clean-annotations> ty;
+      if <?"nabl2.Var"#([file, name])> ty' then ty'' := CVar(file, name) else ty'' := ty' end
+
+  clean-annotations:
+    PRED(tys) -> <remove-annotations(?OfSort(_))> PRED(tys')
+    where
+        tys' := <map(clean-annotations)> tys
+
+  clean-annotations:
+    FUN(tys, rty) -> <remove-annotations(?OfSort(_))> FUN(tys', rty')
+    where
+        tys' := <map(clean-annotations)> tys;
+        rty' := <clean-annotations> rty
+
+  clean-annotations:
+    LIST(ty) -> <remove-annotations(?OfSort(_))> LIST(ty')
+    where
+        ty' := <clean-annotations> ty
+
+  clean-annotations:
+    TUPLE(tys) -> <remove-annotations(?OfSort(_))> TUPLE(tys')
+    where
+        tys' := <map(clean-annotations)> tys
+
+  clean-annotations = remove-annotations(?OfSort(_))
+
+  stx-remove-anno-type = remove-annotations(?StxType(_))
+
+  stx-set-anno-type(|ty) = replace-annotation(?StxType(_)|StxType(ty))
+
+  stx-get-anno-type = get-annotation(?StxType(<id>))
+
+  replace-anno-types = topdown(try(replace-anno-type))
+
+  replace-anno-type: x -> y
+    with if <get-annotation(?StxType(<id>))> x then
+        ty := <stx-get-anno-type> x;
+        y  := <replace-annotation(?StxType(_)|NaBL2Type(ty))> x
+    else
+        y := x
+    end
 
 rules
 
@@ -38,12 +99,19 @@ rules
 
 rules
 
-  norm-get-ast-type =
-    nabl2-get-anno-type
- <+ fail-warn-msg(|"Missing AST type")
+  norm-get-ast-type: a -> ty
+    with if <get-annotation(?NaBL2Type(<id>))> a then
+        ty := <nabl2-get-anno-type> a
+    else
+        ty := <stx-get-anno-type> a
+    end
 
-  norm-set-ast-type(|ty) =
-    nabl2-set-anno-type(|ty)
+  norm-set-ast-type(|ty): a -> a*
+    with if <get-annotation(?NaBL2Type(<id>))> a then
+        a* := <nabl2-set-anno-type(|ty)> a
+    else
+        a* := <stx-set-anno-type(|ty)> a
+    end
 
   norm-copy-ast-type(|t) =
     nabl2-copy-anno-type(|t)
@@ -278,7 +346,7 @@ rules
 
   mk-CExists = stx--exists
 
-  type-to-sort: SORT(d)      -> SimpleSort(<nabl2-get-occurrence-name> d)
+  type-to-sort: SORT(d)      -> SimpleSort(d)
   type-to-sort: INT()        -> IntSort()
   type-to-sort: STRING()     -> StringSort()
   type-to-sort: PATH()       -> PathSort()

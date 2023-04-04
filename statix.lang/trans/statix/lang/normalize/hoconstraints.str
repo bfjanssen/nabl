@@ -18,9 +18,7 @@ rules
   // normalize all higher-order constraint forms to lambda's
 
   normalize-ho-constraints =
-    nabl2-custom-analysis-info-msg(|"| Normalize higher-order constraints...");
     bottomup(try(replace-ho-constraint))
-
 
   replace-ho-constraint: l@LTrue() -> lam
     with PRED(tys) := <norm-get-ast-type> l;
@@ -56,7 +54,6 @@ rules
   // the type.
 
   normalize-lambda-patterns =
-    nabl2-custom-analysis-info-msg(|"| Normalize lambda patterns...");
     bottomup(try(generalize-lambda-pattern))
 
   generalize-lambda-pattern:
